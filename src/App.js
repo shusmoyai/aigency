@@ -1,831 +1,1762 @@
-/*
-================================================================================
-AI Agency Website - Full React Application
-Version: 5.0 (Resource-Rich Homepage Update)
-================================================================================
-*/
-
-// V5: App.js
-
-import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirestore, collection, getDocs, doc, getDoc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
-import { motion, AnimatePresence } from 'framer-motion';
-import CountUp from 'react-countup';
+import { getAuth } from 'firebase/auth';
+import { 
+    getFirestore, 
+    collection, 
+    onSnapshot, 
+    addDoc, 
+    updateDoc, 
+    deleteDoc, 
+    doc,
+    setDoc,
+    query,
+    orderBy,
+    writeBatch
+} from 'firebase/firestore';
 
 // --- Firebase Configuration ---
-// IMPORTANT: Replace these with your actual Firebase project configuration.
 const firebaseConfig = {
-  apiKey: "AIzaSyA9-zRqB6xjbAIDwL8KzVJCBoIVBBPCOk0",
-  authDomain: "aigency-portfolio.firebaseapp.com",
-  projectId: "aigency-portfolio",
-  storageBucket: "aigency-portfolio.firebasestorage.app",
-  messagingSenderId: "889436522880",
-  appId: "1:889436522880:web:aeb772ea945a18e6e19965"
+  apiKey: "YOUR_API_KEY", // Replace with your actual Firebase config
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// --- Initialize Firebase ---
+let app;
+try {
+    app = initializeApp(firebaseConfig);
+} catch (error) {
+    console.warn("Firebase initialization error:", error.message);
+}
+
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// --- Authentication Context ---
-const AuthContext = createContext();
+// --- SVG Icons & Illustrations ---
+const BrainCircuitIcon = (props) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 5a3 3 0 1 0-5.993.142"/><path d="M18 5a3 3 0 1 0-5.993.142"/><path d="M12 19a3 3 0 1 0 5.993-.142"/><path d="M6 19a3 3 0 1 0 5.993-.142"/><path d="M12 12a3 3 0 1 0-5.993.142"/><path d="M18 12a3 3 0 1 0-5.993.142"/><path d="M14.5 10.5h-5"/><path d="M14.5 13.5h-5"/><path d="M10.5 7.5v-1"/><path d="M13.5 7.5v-1"/><path d="M10.5 17.5v-1"/><path d="M13.5 17.5v-1"/><path d="M7.5 10.5h-1"/><path d="M17.5 10.5h-1"/><path d="M7.5 13.5h-1"/><path d="M17.5 13.5h-1"/>
+  </svg>
+);
+const RocketIcon = (props) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.33.04-3.18S5.34 15.66 4.5 16.5z"/><path d="m12 8.5-1.9-1.9c-1.2-1.2-3-1.2-4.2 0l-1.34 1.34c-1.2 1.2-1.2 3 0 4.2l1.9 1.9"/><path d="m18 2-1.5 1.5"/><path d="m22 6-1.5 1.5"/><path d="m19 9-1.5 1.5"/><path d="m15 13-1.5 1.5"/><path d="m13.5 5.5 4-4"/><path d="m17.5 9.5 4-4"/>
+  </svg>
+);
+const GlobeIcon = (props) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>
+  </svg>
+);
+const BarChartIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="12" y1="20" x2="12" y2="10" /><line x1="18" y1="20" x2="18" y2="4" /><line x1="6" y1="20" x2="6" y2="16" />
+    </svg>
+);
+const ExternalLinkIcon = (props) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+  </svg>
+);
+const CloseIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+);
+const PartnershipIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+);
+const TransparencyIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2C6.5 2 2 7 2 12s4.5 10 10 10 10-5 10-10S17.5 2 12 2Z"/><path d="m16 16-1.1-1.1a2 2 0 0 0-2.83 0L8 19"/>
+        <path d="m20 4-3 3"/><path d="m17 7 1 1"/><path d="m14 4-1 1"/><path d="M10 8 9 9"/>
+    </svg>
+);
+const InnovationIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2.69l.34 2.28a2 2 0 0 0 1.8 1.8l2.28.34-2.28.34a2 2 0 0 0-1.8 1.8l-.34 2.28-.34-2.28a2 2 0 0 0-1.8-1.8l-2.28-.34 2.28-.34a2 2 0 0 0 1.8-1.8z"/>
+        <path d="M3 12.31l.91 6.09a2 2 0 0 0 1.82 1.57h10.54a2 2 0 0 0 1.82-1.57l.91-6.09L12 2.69z"/>
+    </svg>
+);
+const MissionIllustration = (props) => (
+    <svg {...props} viewBox="0 0 100 100">
+        <path d="M50 10 L90 50 L50 90 L10 50 Z" fill="none" stroke="currentColor" strokeWidth="3"/>
+        <circle cx="50" cy="50" r="15" fill="currentColor"/>
+        <path d="M42 50 L58 50" stroke="#1F2937" strokeWidth="3"/>
+        <path d="M50 42 L50 58" stroke="#1F2937" strokeWidth="3"/>
+    </svg>
+);
+const VisionIllustration = (props) => (
+    <svg {...props} viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="3"/>
+        <circle cx="50" cy="50" r="25" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="5 5"/>
+        <circle cx="50" cy="50" r="10" fill="currentColor"/>
+    </svg>
+);
+const TeamIllustration = (props) => (
+    <svg {...props} viewBox="0 0 100 100">
+        <circle cx="30" cy="35" r="10" fill="currentColor"/>
+        <path d="M20 60 Q 30 45 40 60 Z" fill="currentColor"/>
+        <circle cx="70" cy="35" r="10" fill="currentColor"/>
+        <path d="M60 60 Q 70 45 80 60 Z" fill="currentColor"/>
+        <path d="M25 80 Q 50 65 75 80" fill="none" stroke="currentColor" strokeWidth="3"/>
+    </svg>
+);
+const SeoIcon = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 17a5 5 0 0 0 5-5 5 5 0 0 0-5-5H7"/><path d="M7 17L17 7"/></svg>;
+const PpcIcon = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4h-6"/><path d="M12 18V6"/></svg>;
+const BrandingIcon = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18l-3-3 3-3 3 3-3 3z"/></svg>;
+const SocialIcon = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+const WebDevIcon = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/><line x1="12" y1="20" x2="12" y2="4"/></svg>;
+const VideoIcon = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>;
+const CheckIcon = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
+const ChatIcon = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>;
+const LightbulbIcon = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.8 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>;
 
-const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+
+// --- Components ---
+
+const Navbar = ({ setPage, isAdmin, handleLogout }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const navLinks = [
+    { name: 'Home', page: 'home' },
+    { name: 'About Us', page: 'about' },
+    { name: 'Services', page: 'services' },
+    { name: 'AI & Consultancy', page: 'ai-consultancy' },
+    { name: 'Pricing', page: 'pricing' },
+    { name: 'Portfolio', page: 'portfolio' },
+    { name: 'Insights', page: 'blog' },
+    { name: 'Contact', page: 'contact' },
+  ];
+
+  return (
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-gray-900/80 backdrop-blur-md shadow-lg shadow-purple-500/10' : 'bg-transparent'}`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-20">
+          <div className="flex items-center">
+            <div className="flex-shrink-0 text-white font-bold text-2xl cursor-pointer" onClick={() => setPage('home')}>
+              <span className="text-purple-400">AI</span>.gency
+            </div>
+          </div>
+          <div className="hidden md:block">
+            <div className="ml-10 flex items-baseline space-x-4">
+              {navLinks.map((link) => (
+                <button key={link.name} onClick={() => setPage(link.page)} className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                  {link.name}
+                </button>
+              ))}
+              {isAdmin ? (
+                <>
+                  <button onClick={() => setPage('admin')} className="bg-green-500 text-white px-3 py-2 rounded-md text-sm font-medium">Dashboard</button>
+                  <button onClick={handleLogout} className="bg-red-500 text-white px-3 py-2 rounded-md text-sm font-medium">Logout</button>
+                </>
+              ) : (
+                 <button onClick={() => setPage('book-a-slot')} className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-2 px-4 rounded-md text-sm transition-transform transform hover:scale-105">
+                    Book a Free Consultation
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="-mr-2 flex md:hidden">
+            <button onClick={() => setIsOpen(!isOpen)} type="button" className="bg-gray-800 inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
+              <span className="sr-only">Open main menu</span>
+              {isOpen ? (
+                <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              ) : (
+                <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+      {isOpen && (
+        <div className="md:hidden bg-gray-900/95">
+          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+            {navLinks.map((link) => (
+              <button key={link.name} onClick={() => { setPage(link.page); setIsOpen(false); }} className="text-gray-300 hover:bg-gray-700 hover:text-white block w-full text-left px-3 py-2 rounded-md text-base font-medium transition-colors">
+                {link.name}
+              </button>
+            ))}
+            {isAdmin ? (
+                <>
+                  <button onClick={() => { setPage('admin'); setIsOpen(false); }} className="bg-green-500 text-white block w-full text-left px-3 py-2 rounded-md text-base font-medium">Dashboard</button>
+                  <button onClick={() => { handleLogout(); setIsOpen(false); }} className="bg-red-500 text-white block w-full text-left px-3 py-2 rounded-md text-base font-medium">Logout</button>
+                </>
+              ) : (
+                <button onClick={() => { setPage('book-a-slot'); setIsOpen(false); }} className="bg-gradient-to-r from-purple-600 to-pink-600 text-white block w-full text-left px-3 py-2 rounded-md text-base font-medium">
+                    Book a Free Consultation
+                </button>
+              )}
+          </div>
+        </div>
+      )}
+    </nav>
+  );
+};
+
+const ParticleCanvas = () => {
+    const canvasRef = useRef(null);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            setUser(user);
-            setLoading(false);
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        let animationFrameId;
+        let particles = [];
+        const particleCount = 70;
+
+        const resizeCanvas = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        };
+
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.size = Math.random() * 2 + 1;
+                this.speedX = Math.random() * 1 - 0.5;
+                this.speedY = Math.random() * 1 - 0.5;
+                this.color = `rgba(167, 139, 250, ${Math.random() * 0.5 + 0.2})`;
+            }
+            update() {
+                if (this.x > canvas.width || this.x < 0) this.speedX *= -1;
+                if (this.y > canvas.height || this.y < 0) this.speedY *= -1;
+                this.x += this.speedX;
+                this.y += this.speedY;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        const init = () => {
+            particles = [];
+            for (let i = 0; i < particleCount; i++) {
+                particles.push(new Particle(Math.random() * canvas.width, Math.random() * canvas.height));
+            }
+        };
+
+        const connect = () => {
+            let opacityValue = 1;
+            for (let a = 0; a < particles.length; a++) {
+                for (let b = a; b < particles.length; b++) {
+                    let distance = Math.sqrt(
+                        Math.pow(particles[a].x - particles[b].x, 2) + Math.pow(particles[a].y - particles[b].y, 2)
+                    );
+                    if (distance < 100) {
+                        opacityValue = 1 - (distance / 100);
+                        ctx.strokeStyle = `rgba(196, 181, 253, ${opacityValue})`;
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[a].x, particles[a].y);
+                        ctx.lineTo(particles[b].x, particles[b].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        };
+
+        const animate = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+            }
+            connect();
+            animationFrameId = requestAnimationFrame(animate);
+        };
+
+        resizeCanvas();
+        init();
+        animate();
+        
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            init();
         });
-        return unsubscribe;
+
+        return () => {
+            window.cancelAnimationFrame(animationFrameId);
+            window.removeEventListener('resize', resizeCanvas);
+        };
     }, []);
 
-    const value = { user, loading };
-
-    return (
-        <AuthContext.Provider value={value}>
-            {!loading && children}
-        </AuthContext.Provider>
-    );
+    return <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full z-0"></canvas>;
 };
 
-const useAuth = () => {
-    return useContext(AuthContext);
-};
-
-// --- Main App Component ---
-function App() {
-    return (
-        <AuthProvider>
-            <Router>
-                <div className="App">
-                    <Header />
-                    <main>
-                        <AnimatedRoutes />
-                    </main>
-                    <Footer />
-                </div>
-            </Router>
-        </AuthProvider>
-    );
-}
-
-// --- Animated Routes for Page Transitions ---
-const AnimatedRoutes = () => {
-    const location = useLocation();
-    return (
-        <AnimatePresence mode="wait">
-            <Routes location={location} key={location.pathname}>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/about" element={<AboutPage />} />
-                <Route path="/why-us" element={<WhyUsPage />} />
-                <Route path="/portfolio" element={<PortfolioPage />} />
-                <Route path="/contact" element={<ContactPage />} />
-                <Route path="/book-a-slot" element={<BookSlotPage />} />
-                <Route path="/admin" element={<AdminPage />} />
-                <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-        </AnimatePresence>
-    );
-}
-
-// --- Page Transition Wrapper ---
-const pageTransition = {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -20 },
-    transition: { duration: 0.5 }
-};
-
-const PageWrapper = ({ children }) => (
-    <motion.div
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        variants={pageTransition}
-        transition={{ duration: 0.4 }}
-    >
-        {children}
-    </motion.div>
-);
-
-
-// --- COMPONENTS ---
-
-// --- Header ---
-const Header = () => {
-    const [isOpen, setIsOpen] = useState(false);
-    const { user } = useAuth();
-    const navigate = useNavigate();
-
-    const handleLogout = async () => {
-        await signOut(auth);
-        navigate('/');
-    };
-    
-    const NavLink = ({ to, children }) => {
-        const location = useLocation();
-        const isActive = location.pathname === to;
-        return (
-            <Link to={to} className={`nav-link ${isActive ? 'active' : ''}`} onClick={() => setIsOpen(false)}>
-                {children}
-            </Link>
-        );
-    };
-
-    return (
-        <header className="header">
-            <div className="container">
-                <Link to="/" className="logo">AI-GENIX</Link>
-                <nav className={`nav ${isOpen ? 'open' : ''}`}>
-                    <NavLink to="/">Home</NavLink>
-                    <NavLink to="/about">About Us</NavLink>
-                    <NavLink to="/why-us">Why Us</NavLink>
-                    <NavLink to="/portfolio">Portfolio</NavLink>
-                    <NavLink to="/contact">Contact</NavLink>
-                    {user && <Link to="/admin" className="nav-link" onClick={() => setIsOpen(false)}>Admin</Link>}
-                </nav>
-                 <div className="header-actions">
-                    <Link to="/book-a-slot" className="btn btn-primary">Book a Slot</Link>
-                    <button className="mobile-toggle" onClick={() => setIsOpen(!isOpen)}>
-                        {isOpen ? 'Close' : 'Menu'}
-                    </button>
-                </div>
-            </div>
-        </header>
-    );
-};
-
-// --- Footer ---
-const Footer = () => (
-    <footer className="footer">
-        <div className="container">
-            <div className="footer-content">
-                <div className="footer-brand">
-                    <h3 className="logo">AI-GENIX</h3>
-                    <p>Blending AI efficiency with human creativity to scale your business.</p>
-                </div>
-                <div className="footer-links">
-                    <h4>Quick Links</h4>
-                    <ul>
-                        <li><Link to="/about">About Us</Link></li>
-                        <li><Link to="/why-us">Why Us</Link></li>
-                        <li><Link to="/portfolio">Our Work</Link></li>
-                        <li><Link to="/contact">Contact</Link></li>
-                    </ul>
-                </div>
-                <div className="footer-contact">
-                    <h4>Get in Touch</h4>
-                    <p>info@aigenix.com</p>
-                    <p>Based in Chattogram, Serving the World</p>
-                </div>
-                <div className="footer-cta">
-                     <h4>Ready to Grow?</h4>
-                     <p>Let's discuss how our unique approach can revolutionize your marketing.</p>
-                     <Link to="/book-a-slot" className="btn btn-secondary">Get a Free Consultation</Link>
-                </div>
-            </div>
-            <div className="footer-bottom">
-                <p>&copy; {new Date().getFullYear()} AI-Genix. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
-);
-
-
-// --- PAGES ---
-
-// --- V5: Resource-Rich Home Page ---
-const HomePage = () => {
-    const [portfolio, setPortfolio] = useState([]);
-    // In a real app, you'd fetch blog posts too
-    const blogPosts = [
-        { id: 1, title: 'The Future is Hybrid: Why Human Oversight on AI is Key', excerpt: 'AI is a powerful tool, but true marketing genius comes from the strategic guidance of a human expert...' },
-        { id: 2, title: '5 AI Tools That Will Revolutionize Your Content Creation', excerpt: 'We pull back the curtain on some of the tech we use to deliver stunning results at unparalleled speed...' },
-        { id: 3, title: 'From Cold Outreach to Hot Lead: Our AI-Powered Process', excerpt: 'Discover how we turn vast, cold data into genuine, high-quality leads for your business...' },
+const HomePage = ({ setPage, portfolioItems, blogPosts }) => {
+    const trustedByLogos = [
+        "https://tailwindui.com/img/logos/158x48/transistor-logo-white.svg",
+        "https://tailwindui.com/img/logos/158x48/reform-logo-white.svg",
+        "https://tailwindui.com/img/logos/158x48/tuple-logo-white.svg",
+        "https://tailwindui.com/img/logos/158x48/savvycal-logo-white.svg",
+        "https://tailwindui.com/img/logos/158x48/statamic-logo-white.svg",
     ];
 
-
-    useEffect(() => {
-        const fetchPortfolio = async () => {
-            const portfolioCol = collection(db, 'portfolio');
-            const portfolioSnapshot = await getDocs(portfolioCol);
-            const portfolioList = portfolioSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setPortfolio(portfolioList.slice(0, 3)); // Show 3 featured projects
-        };
-        fetchPortfolio();
-    }, []);
+    const services = [
+        { icon: <SeoIcon className="w-8 h-8 text-purple-400"/>, title: "SEO", description: "Dominate search rankings." },
+        { icon: <PpcIcon className="w-8 h-8 text-purple-400"/>, title: "PPC", description: "Maximize your ROI." },
+        { icon: <BrandingIcon className="w-8 h-8 text-purple-400"/>, title: "Branding", description: "Craft a memorable brand." },
+        { icon: <SocialIcon className="w-8 h-8 text-purple-400"/>, title: "Social", description: "Build and engage community." },
+    ];
+    
+    const testimonials = [
+        { quote: "Working with AI.gency was a game-changer. Their data-driven approach increased our leads by 300% in one quarter.", author: "CEO, Tech Innovators" },
+        { quote: "The level of strategic insight and efficiency is unparalleled. We finally have a marketing partner that understands our business.", author: "Marketing Director, FinCorp" },
+        { quote: "I was skeptical about AI, but the results speak for themselves. Our ROI has never been higher.", author: "Founder, E-commerce Brand" },
+    ];
 
     return (
-        <PageWrapper>
+        <div className="bg-gray-900 text-white">
             {/* Hero Section */}
-            <section className="hero-section">
-                <div className="container">
-                    <div className="hero-content">
-                        <h1>The New Era of Marketing is Here.</h1>
-                        <p className="subtitle">We fuse Artificial Intelligence with Human Expertise to deliver unparalleled marketing results. Faster. Smarter. Better.</p>
-                        <Link to="/book-a-slot" className="btn btn-primary btn-lg">Start Your Growth Story</Link>
+            <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
+                <ParticleCanvas />
+                <div className="absolute inset-0 bg-gradient-to-b from-gray-900 via-gray-900/50 to-gray-900"></div>
+                <div className="relative z-10 text-center px-4 flex-grow flex flex-col items-center justify-center">
+                    <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight mb-4 animate-fade-in-down">
+                        <span className="block">AI-Powered Results.</span>
+                        <span className="block text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">Human-Driven Strategy.</span>
+                    </h1>
+                    <p className="max-w-2xl mx-auto mt-6 text-lg md:text-xl text-gray-300 animate-fade-in-up">
+                        We merge cutting-edge artificial intelligence with expert human insight to scale your brand. Efficiency, creativity, and growth, delivered globally.
+                    </p>
+                    <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4 animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
+                        <button onClick={() => setPage('book-a-slot')} className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-8 rounded-full text-lg transition-transform transform hover:scale-105 shadow-lg shadow-purple-500/30">
+                            Get a Free Growth Plan
+                        </button>
+                        <button onClick={() => setPage('services')} className="bg-gray-700/50 backdrop-blur-sm border border-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-8 rounded-full text-lg transition-all transform hover:scale-105 shadow-lg">
+                            Explore Our Services
+                        </button>
                     </div>
                 </div>
-                <div className="hero-bg-animation">
-                    {/* Placeholder for a cool, abstract animation */}
-                    <div className="circle"></div>
-                    <div className="circle"></div>
-                    <div className="circle"></div>
-                </div>
-            </section>
-
-             {/* Trusted By Section */}
-            <section className="trusted-by-section">
-                <div className="container">
-                    <p>POWERING GROWTH FOR INNOVATIVE BRANDS WORLDWIDE</p>
-                    <div className="logos">
-                        {/* Replace with actual client logos */}
-                        <div className="logo-placeholder">ClientLogo</div>
-                        <div className="logo-placeholder">ClientLogo</div>
-                        <div className="logo-placeholder">ClientLogo</div>
-                        <div className="logo-placeholder">ClientLogo</div>
-                        <div className="logo-placeholder">ClientLogo</div>
+                <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+                    <p className="text-center text-gray-400 text-sm font-semibold">TRUSTED BY THE WORLD'S MOST INNOVATIVE COMPANIES</p>
+                    <div className="mt-6 grid grid-cols-2 gap-8 md:grid-cols-5 lg:grid-cols-5">
+                        {trustedByLogos.map((logo, index) => (
+                            <div key={index} className="col-span-1 flex justify-center opacity-60 hover:opacity-100 transition-opacity duration-300">
+                                <img className="h-10" src={logo} alt={`Client Logo ${index + 1}`} />
+                            </div>
+                        ))}
                     </div>
                 </div>
-            </section>
+            </div>
 
-             {/* What We Do Section */}
-            <section className="what-we-do-section section-padding">
-                <div className="container text-center">
-                    <h2 className="section-title">Our Core Services</h2>
-                    <p className="section-subtitle">A holistic suite of services designed for impact.</p>
-                    <div className="grid-3-col">
-                        <div className="service-card">
-                            <div className="service-icon"> {/* Placeholder for icon */} </div>
-                            <h3>AI-Powered Lead Gen</h3>
-                            <p>We build hyper-targeted lead lists and automate outreach to fill your pipeline.</p>
-                        </div>
-                         <div className="service-card">
-                            <div className="service-icon"> {/* Placeholder for icon */} </div>
-                            <h3>Content & Branding</h3>
-                            <p>High-quality content, from blog posts to social media, crafted at scale.</p>
-                        </div>
-                         <div className="service-card">
-                            <div className="service-icon"> {/* Placeholder for icon */} </div>
-                            <h3>Performance Marketing</h3>
-                            <p>Data-driven ad campaigns optimized by AI, managed by human strategists.</p>
-                        </div>
+            {/* Services Snapshot */}
+            <div className="py-20 bg-gray-900/50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center">
+                        <h2 className="text-base font-semibold text-purple-400 tracking-wide uppercase">What We Do</h2>
+                        <p className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">A Growth Engine for Your Business</p>
+                    </div>
+                    <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                        {services.map(service => (
+                            <div key={service.title} className="bg-gray-800 p-6 rounded-lg text-center transform hover:-translate-y-2 transition-transform duration-300">
+                                <div className="flex items-center justify-center h-12 w-12 rounded-md bg-purple-500/10 text-white mx-auto mb-4">
+                                    {service.icon}
+                                </div>
+                                <h3 className="text-lg font-medium text-white">{service.title}</h3>
+                                <p className="mt-2 text-base text-gray-400">{service.description}</p>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="mt-12 text-center">
+                        <button onClick={() => setPage('services')} className="text-purple-400 font-semibold hover:text-purple-300">
+                            See All Services &rarr;
+                        </button>
                     </div>
                 </div>
-            </section>
+            </div>
 
-
-            {/* Featured Work Section */}
-            <section className="featured-work-section section-padding bg-light">
-                <div className="container">
-                    <h2 className="section-title text-center">See The Results</h2>
-                     <p className="section-subtitle text-center">We don't just talk the talk. Here's how we've helped businesses like yours.</p>
-                    <div className="portfolio-grid">
-                        {portfolio.map(item => (
-                            <div key={item.id} className="portfolio-card-small">
-                                <img src={item.imageUrl || 'https://via.placeholder.com/400x300'} alt={item.title} />
-                                <div className="card-content">
-                                    <h4>{item.title}</h4>
-                                    <p>{item.category}</p>
+            {/* Featured Case Studies */}
+            <div className="py-20 bg-gray-800">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center">
+                        <h2 className="text-base font-semibold text-purple-400 tracking-wide uppercase">Proven Results</h2>
+                        <p className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">Success Stories</p>
+                    </div>
+                    <div className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                        {portfolioItems.slice(0, 3).map(item => (
+                            <div key={item.id} className="bg-gray-900 rounded-lg overflow-hidden shadow-lg group">
+                                <img src={item.imageUrl || `https://placehold.co/600x400/111827/a78bfa?text=${item.title}`} alt={item.title} className="w-full h-60 object-cover" />
+                                <div className="p-6">
+                                    <p className="text-sm text-purple-400 font-semibold">{item.category}</p>
+                                    <h3 className="text-xl font-bold mt-2 mb-2">{item.title}</h3>
+                                    <p className="text-gray-400 text-sm mb-4">{item.description}</p>
+                                    <button onClick={() => setPage('portfolio')} className="text-sm font-semibold text-white group-hover:text-purple-400">View Case Study &rarr;</button>
                                 </div>
                             </div>
                         ))}
                     </div>
-                     <div className="text-center" style={{marginTop: '2rem'}}>
-                        <Link to="/portfolio" className="btn btn-secondary">View All Projects</Link>
+                </div>
+            </div>
+
+            {/* ROI Calculator Section */}
+            <div className="py-20">
+                <RoiCalculatorPage />
+            </div>
+
+            {/* Testimonials */}
+            <div className="py-20 bg-gray-800">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center">
+                         <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">What Our Partners Say</h2>
+                    </div>
+                    <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {testimonials.map((testimonial, index) => (
+                            <blockquote key={index} className="bg-gray-900 p-8 rounded-lg shadow-lg">
+                                <p className="text-lg text-gray-300">"{testimonial.quote}"</p>
+                                <footer className="mt-6">
+                                    <p className="font-semibold text-white">{testimonial.author}</p>
+                                </footer>
+                            </blockquote>
+                        ))}
                     </div>
                 </div>
-            </section>
-            
-            {/* ROI Calculator Section */}
-            <RoiCalculatorSection />
-            
-            {/* Insights Section */}
-            <section className="insights-section section-padding">
-                 <div className="container">
-                    <h2 className="section-title text-center">Our Latest Insights</h2>
-                    <p className="section-subtitle text-center">Thoughts on the future of marketing, from the front lines.</p>
-                    <div className="grid-3-col">
+            </div>
+
+            {/* Latest Insights */}
+            <div className="py-20">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center">
+                        <h2 className="text-base font-semibold text-purple-400 tracking-wide uppercase">Insights</h2>
+                        <p className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">From Our Workbench</p>
+                    </div>
+                    <div className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                         {blogPosts.map(post => (
-                             <div key={post.id} className="blog-card">
-                                <h3>{post.title}</h3>
-                                <p>{post.excerpt}</p>
-                                <a href="#" className="read-more">Read More &rarr;</a>
+                            <div key={post.id} onClick={() => setPage('blog')} className="cursor-pointer bg-gray-800 rounded-lg overflow-hidden shadow-lg group">
+                                <img src={post.featuredImageUrl || `https://placehold.co/600x400/111827/a78bfa?text=Insight`} alt={post.title} className="w-full h-60 object-cover" />
+                                <div className="p-6">
+                                    <h3 className="text-xl font-bold mt-2 mb-2">{post.title}</h3>
+                                    <p className="text-gray-400 text-sm mb-4">{post.excerpt}</p>
+                                    <span className="text-sm font-semibold text-purple-400 group-hover:text-pink-500">Read More &rarr;</span>
+                                </div>
                             </div>
                         ))}
                     </div>
                 </div>
-            </section>
-            
-            {/* Testimonials Section */}
-            <section className="testimonials-section section-padding bg-light">
-                <div className="container">
-                     <h2 className="section-title text-center">What Our Clients Say</h2>
-                    <div className="testimonial">
-                        <p className="testimonial-quote">"Working with AI-Genix was a game-changer. Their process is incredibly efficient, and the quality of leads we received was beyond our expectations. They doubled our inbound meetings in just one quarter."</p>
-                        <p className="testimonial-author">- Sarah L., CEO of TechNova</p>
-                    </div>
-                </div>
-            </section>
-
-        </PageWrapper>
-    );
-};
-
-// --- ROI Calculator (for homepage) ---
-const RoiCalculatorSection = () => {
-    const [investment, setInvestment] = useState(1500);
-    const [roi, setRoi] = useState(300); // Default average ROI
-
-    const revenue = investment * (roi / 100);
-    const profit = revenue - investment;
-
-    return (
-        <section className="roi-calculator-section section-padding">
-            <div className="container">
-                <h2 className="section-title text-center">Calculate Your Potential ROI</h2>
-                <p className="section-subtitle text-center">See the potential impact of our AI-driven approach on your bottom line.</p>
-                <div className="calculator-wrapper">
-                    <div className="calculator-inputs">
-                        <div className="form-group">
-                            <label>Your Monthly Marketing Investment ($)</label>
-                            <input
-                                type="range"
-                                min="500"
-                                max="10000"
-                                step="100"
-                                value={investment}
-                                onChange={(e) => setInvestment(Number(e.target.value))}
-                            />
-                             <span>${investment.toLocaleString()}</span>
-                        </div>
-                         <div className="form-group">
-                            <label>Expected ROI with AI-Genix (%)</label>
-                             <input
-                                type="range"
-                                min="150"
-                                max="800"
-                                step="10"
-                                value={roi}
-                                onChange={(e) => setRoi(Number(e.target.value))}
-                            />
-                             <span>{roi}%</span>
-                        </div>
-                    </div>
-                    <div className="calculator-results">
-                        <h3>Potential Results</h3>
-                        <div className="result-item">
-                            <h4>Generated Revenue</h4>
-                            <p>${revenue.toLocaleString()}</p>
-                        </div>
-                        <div className="result-item">
-                            <h4>Net Profit</h4>
-                             <p>${profit.toLocaleString()}</p>
-                        </div>
-                         <p className="disclaimer">*This is an estimate based on average client results. Actual ROI can vary.</p>
-                    </div>
-                </div>
             </div>
-        </section>
-    );
-};
-
-
-// --- V4: About Us Page ---
-const AboutPage = () => (
-    <PageWrapper>
-        <div className="container section-padding">
-            <h1 className="page-title text-center">We Are Your Unfair Advantage.</h1>
-            <p className="page-subtitle text-center">In a world of digital noise, we provide the clarity and power to rise above.</p>
             
-            <div className="about-section">
-                <div className="about-content">
-                    <h2>Our Mission: Democratizing Growth</h2>
-                    <p>High-level marketing shouldn't be reserved for corporate giants. Our mission is to equip ambitious businesses with the cutting-edge strategies and AI-powered tools needed to compete and win on a global scale. We believe in a future where great ideas, not just big budgets, determine success.</p>
-                </div>
-                <div className="about-visual">
-                    {/* Placeholder for a mission-related SVG */}
-                     <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#e0f7fa" /><path d="M50 20 l20 30 l-40 0 z" fill="#00796b" /></svg>
+             {/* Final CTA */}
+            <div className="bg-gray-800">
+                <div className="max-w-4xl mx-auto text-center py-16 px-4 sm:py-20 sm:px-6 lg:px-8">
+                    <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
+                        <span className="block">Ready to unlock your growth potential?</span>
+                    </h2>
+                    <p className="mt-4 text-lg leading-6 text-gray-300">Let's build your success story together. Get a free, no-obligation growth plan from our experts.</p>
+                    <button onClick={() => setPage('book-a-slot')} className="mt-8 w-full inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-full text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 sm:w-auto">
+                        Book a Free Consultation
+                    </button>
                 </div>
             </div>
 
-            <div className="about-section reverse">
-                <div className="about-content">
-                    <h2>The Human Strategists Behind the AI</h2>
-                    <p>Our technology is powerful, but our people are our strength. Every campaign is overseen by experienced marketers who guide the AI, interpret the data, and build genuine relationships with our clients. We are prompt whisperers, data scientists, and creative storytellers—your dedicated partners in growth.</p>
-                </div>
-                 <div className="about-visual">
-                     {/* Placeholder for a team-related SVG */}
-                     <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#fce4ec" /><path d="M30 70 q 20 -40 40 0" stroke="#c2185b" strokeWidth="4" fill="none" /></svg>
-                 </div>
-            </div>
-            
         </div>
-    </PageWrapper>
-);
-
-// --- V3: Why Us Page ---
-const WhyUsPage = () => {
-    const [stats, setStats] = useState(null);
-
-    useEffect(() => {
-        const fetchStats = async () => {
-            const docRef = doc(db, 'stats', 'whyUsStats');
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                setStats(docSnap.data());
-            } else {
-                console.log("No such document!");
-            }
-        };
-        fetchStats();
-    }, []);
-
-    return (
-        <PageWrapper>
-            <div className="container section-padding">
-                <h1 className="page-title text-center">The AI-Genix Difference</h1>
-                <p className="page-subtitle text-center">It's not just about using AI. It's about using it right.</p>
-
-                 {/* Our Process Section */}
-                <div className="process-section">
-                    <h2 className="section-title text-center">Our AI-Human Workflow</h2>
-                    <div className="process-steps">
-                        {/* Step 1 */}
-                        <div className="process-step">
-                            <div className="process-icon"> {/* Icon for Discovery */} </div>
-                            <h3>1. AI Discovery</h3>
-                            <p>Our AI scours millions of data points to identify your perfect customer profile and build hyper-targeted lead lists.</p>
-                        </div>
-                        {/* Step 2 */}
-                        <div className="process-step">
-                            <div className="process-icon"> {/* Icon for Outreach */} </div>
-                            <h3>2. Automated Outreach</h3>
-                            <p>Personalized, automated email campaigns engage prospects at scale, warming them up for a real conversation.</p>
-                        </div>
-                        {/* Step 3 */}
-                        <div className="process-step">
-                            <div className="process-icon"> {/* Icon for Human Strategy */} </div>
-                            <h3>3. Human Strategy</h3>
-                            <p>Once a lead shows interest, our human experts take over to craft strategy, build relationships, and define goals.</p>
-                        </div>
-                        {/* Step 4 */}
-                        <div className="process-step">
-                            <div className="process-icon"> {/* Icon for Execution */} </div>
-                            <h3>4. AI-Assisted Execution</h3>
-                            <p>We leverage AI tools to create high-quality content and campaigns with incredible speed, all guided by human creativity.</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Core Philosophies Section */}
-                 <div className="philosophies-section section-padding bg-light">
-                    <h2 className="section-title text-center">Our Core Philosophies</h2>
-                     <div className="grid-3-col">
-                        <div className="philosophy-card">
-                             <h3>Strategic Partnership</h3>
-                            <p>We're not just a service provider; we're an extension of your team, deeply invested in your success.</p>
-                        </div>
-                         <div className="philosophy-card">
-                            <h3>Radical Transparency</h3>
-                            <p>You'll always know what we're doing, why we're doing it, and how it's performing. No black boxes.</p>
-                        </div>
-                         <div className="philosophy-card">
-                            <h3>Continuous Innovation</h3>
-                            <p>We are constantly testing new tools and strategies to ensure you always have a competitive edge.</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Stats Section */}
-                <div className="stats-section section-padding">
-                     <h2 className="section-title text-center">The Proof Is in the Numbers</h2>
-                    {stats ? (
-                        <div className="stats-grid">
-                            <div className="stat-item">
-                                <h3><CountUp end={stats.automationEfficiency} duration={3} />%</h3>
-                                <p>Increase in Team Efficiency</p>
-                            </div>
-                            <div className="stat-item">
-                                <h3><CountUp end={stats.deliverySpeed} duration={3} />x</h3>
-                                <p>Faster Campaign Delivery</p>
-                            </div>
-                             <div className="stat-item">
-                                <h3><CountUp end={stats.countriesReached} duration={3} /></h3>
-                                <p>Countries Reached</p>
-                            </div>
-                             <div className="stat-item">
-                                <h3><CountUp end={stats.roiIncrease} duration={3} />%</h3>
-                                <p>Average Client ROI Increase</p>
-                            </div>
-                        </div>
-                    ) : <p>Loading stats...</p>}
-                </div>
-            </div>
-        </PageWrapper>
     );
 };
 
-// --- Portfolio Page ---
-const PortfolioPage = () => {
-    const [portfolio, setPortfolio] = useState([]);
-    useEffect(() => {
-        const fetchPortfolio = async () => {
-            const portfolioCol = collection(db, 'portfolio');
-            const portfolioSnapshot = await getDocs(portfolioCol);
-            const portfolioList = portfolioSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setPortfolio(portfolioList);
-        };
-        fetchPortfolio();
-    }, []);
+const AboutUsPage = ({ setPage }) => {
+    const teamMembers = [
+        { name: 'Jane Doe', title: 'CEO & Chief Strategist', imageUrl: 'https://placehold.co/400x400/a78bfa/ffffff?text=JD' },
+        { name: 'John Smith', title: 'Head of AI Operations', imageUrl: 'https://placehold.co/400x400/a78bfa/ffffff?text=JS' },
+        { name: 'Emily White', title: 'Creative Director', imageUrl: 'https://placehold.co/400x400/a78bfa/ffffff?text=EW' },
+    ];
+    
+    return (
+        <div className="bg-gray-900 text-white pt-28 pb-20 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto">
+                <div className="text-center">
+                    <h2 className="text-base font-semibold text-purple-400 tracking-wide uppercase">Our Story</h2>
+                    <p className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl">We're Redefining the Agency Model</p>
+                    <p className="mt-4 max-w-3xl mx-auto text-xl text-gray-400">
+                        Founded on the belief that technology should amplify human potential, not replace it. We are a new breed of agency for a new era of business.
+                    </p>
+                </div>
+
+                <div className="mt-20 grid md:grid-cols-2 gap-16 items-center">
+                    <div className="space-y-8">
+                        <div>
+                            <h3 className="text-2xl font-bold text-white flex items-center mb-4">
+                                <MissionIllustration className="w-10 h-10 mr-4 text-purple-400" />
+                                Our Mission
+                            </h3>
+                            <p className="text-lg text-gray-300">
+                                To empower businesses of all sizes with the intelligent, data-driven marketing strategies once reserved for the enterprise elite. We democratize growth by making cutting-edge AI effective, accessible, and affordable.
+                            </p>
+                        </div>
+                        <div>
+                            <h3 className="text-2xl font-bold text-white flex items-center mb-4">
+                                <VisionIllustration className="w-10 h-10 mr-4 text-purple-400" />
+                                Our Vision
+                            </h3>
+                            <p className="text-lg text-gray-300">
+                                We envision a future where every business decision is informed by data and elevated by human creativity. Our goal is to be the catalyst for that future, building a world where technology and humanity collaborate to create unprecedented value.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="bg-gray-800/50 p-8 rounded-2xl shadow-2xl border border-gray-700">
+                         <h3 className="text-2xl font-bold text-white flex items-center mb-6">
+                            <TeamIllustration className="w-10 h-10 mr-4 text-purple-400" />
+                            The Human Element
+                        </h3>
+                        <p className="text-lg text-gray-300 mb-6">
+                            Our AI is powerful, but our people are our soul. We are a team of passionate strategists, creatives, and technologists united by a single purpose: your success. We are the human minds that guide the artificial intelligence, ensuring every strategy is not only smart but also wise.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="mt-24">
+                    <div className="text-center">
+                        <h3 className="text-3xl font-bold tracking-tight">Meet the Human Strategists</h3>
+                        <p className="mt-4 max-w-2xl mx-auto text-lg text-gray-400">The minds behind the machine.</p>
+                    </div>
+                    <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+                        {teamMembers.map((member, index) => (
+                            <div key={index} className="bg-gray-800 p-6 rounded-lg text-center transform hover:-translate-y-2 transition-transform duration-300">
+                                <img className="w-32 h-32 rounded-full mx-auto mb-4 border-4 border-purple-500/50" src={member.imageUrl} alt={member.name} />
+                                <h4 className="text-xl font-bold text-white">{member.name}</h4>
+                                <p className="text-purple-400">{member.title}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const ServicesPage = ({ setPage }) => {
+    const services = [
+        { icon: <SeoIcon className="w-12 h-12 text-purple-400"/>, title: "Search Engine Optimization", description: "Dominate search rankings with AI-driven keyword research, technical optimization, and content strategy." },
+        { icon: <PpcIcon className="w-12 h-12 text-purple-400"/>, title: "Performance Marketing (PPC)", description: "Maximize your ROI with intelligent ad campaign management across Google, Facebook, and more." },
+        { icon: <BrandingIcon className="w-12 h-12 text-purple-400"/>, title: "Branding & Identity", description: "Craft a memorable brand that resonates with your audience, from logo design to complete brand guidelines." },
+        { icon: <SocialIcon className="w-12 h-12 text-purple-400"/>, title: "Social Media Marketing", description: "Build and engage your community with data-informed content and targeted social campaigns." },
+        { icon: <WebDevIcon className="w-12 h-12 text-purple-400"/>, title: "Web Design & Development", description: "Create high-performance, conversion-focused websites that serve as your digital flagship." },
+        { icon: <VideoIcon className="w-12 h-12 text-purple-400"/>, title: "Video & Content Production", description: "Capture attention with compelling video ads, explainers, and a content strategy that builds authority." },
+    ];
 
     return (
-        <PageWrapper>
-            <div className="container section-padding">
-                <h1 className="page-title text-center">Our Work</h1>
-                <p className="page-subtitle text-center">A showcase of the results we've driven for our clients.</p>
-                <div className="portfolio-grid-full">
-                    {portfolio.map(item => (
-                        <div key={item.id} className="portfolio-item-full">
-                            <img src={item.imageUrl || 'https://via.placeholder.com/600x400'} alt={item.title} />
-                            <div className="portfolio-item-content">
-                                <h3>{item.title}</h3>
-                                <span>{item.category}</span>
-                                <p>{item.description}</p>
+        <div className="bg-gray-900 text-white pt-28 pb-20 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto">
+                <div className="text-center">
+                    <h2 className="text-base font-semibold text-purple-400 tracking-wide uppercase">Our Capabilities</h2>
+                    <p className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl">A Full-Spectrum Growth Engine</p>
+                    <p className="mt-4 max-w-3xl mx-auto text-xl text-gray-400">
+                        We offer a comprehensive suite of services designed to address every stage of your growth journey, each powered by our unique AI-Human synergy.
+                    </p>
+                </div>
+                <div className="mt-20 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {services.map((service, index) => (
+                        <div key={index} className="bg-gray-800 p-8 rounded-2xl border border-gray-700/50 hover:border-purple-500/50 transition-all duration-300 transform hover:-translate-y-2">
+                            <div className="flex items-center justify-center h-16 w-16 rounded-full bg-gray-700 mb-6">
+                                {service.icon}
+                            </div>
+                            <h3 className="text-2xl font-bold mb-4">{service.title}</h3>
+                            <p className="text-gray-300">{service.description}</p>
+                        </div>
+                    ))}
+                </div>
+                 <div className="mt-20 text-center">
+                    <p className="text-xl text-gray-300 mb-4">Ready to find the right solution for you?</p>
+                    <button onClick={() => setPage('book-a-slot')} className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-8 rounded-full text-lg transition-transform transform hover:scale-105 shadow-lg shadow-purple-500/30">
+                        Get Your Custom Growth Plan
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const PricingPage = ({ handleSetPage }) => {
+    const tiers = [
+        {
+            name: 'Launchpad',
+            price: '499',
+            description: 'For new businesses establishing their digital presence.',
+            features: [
+                'Foundational SEO Setup',
+                'Google Business Profile Optimization',
+                'Social Media Page Setup (2 platforms)',
+                'Monthly Content Calendar (12 posts)',
+                'Basic Monthly Performance Report'
+            ],
+            cta: 'Choose Plan'
+        },
+        {
+            name: 'Growth Engine',
+            price: '1,299',
+            description: 'For established businesses ready to scale aggressively.',
+            features: [
+                'Everything in Launchpad, plus:',
+                'Comprehensive SEO & Content Strategy',
+                'Performance Marketing (PPC) Campaigns',
+                'AI-Powered Ad Creative Testing',
+                'Advanced Analytics & Bi-weekly Strategy Calls'
+            ],
+            cta: 'Choose Plan',
+            popular: true
+        },
+        {
+            name: 'Market Leader',
+            price: 'Custom',
+            description: 'A full strategic partnership for market dominance.',
+            features: [
+                'Everything in Growth, plus:',
+                'AI Transformation Consultancy',
+                'Marketing Automation & CRM Integration',
+                'Advanced Conversion Rate Optimization',
+                'Dedicated Strategic Account Manager'
+            ],
+            cta: 'Contact Us'
+        }
+    ];
+
+    return (
+        <div className="bg-gray-900 text-white pt-28 pb-20 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto">
+                <div className="text-center">
+                    <h2 className="text-base font-semibold text-purple-400 tracking-wide uppercase">Pricing Plans</h2>
+                    <p className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl">Transparent Pricing for Every Goal</p>
+                    <p className="mt-4 max-w-3xl mx-auto text-xl text-gray-400">
+                        Choose the plan that aligns with your business objectives. No hidden fees, just clear value and measurable results.
+                    </p>
+                    <div className="mt-8 inline-block bg-gradient-to-r from-purple-600 to-pink-600 p-1 rounded-lg">
+                        <div className="bg-gray-800 px-4 py-2 rounded-md">
+                            <p className="font-semibold text-white">🎉 Special Launch Offer: Get 50% OFF Your First Month!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mt-20 grid md:grid-cols-3 gap-8">
+                    {tiers.map((tier) => (
+                        <div key={tier.name} className={`relative bg-gray-800 rounded-2xl p-8 shadow-lg border-2 ${tier.popular ? 'border-purple-500' : 'border-gray-700'}`}>
+                            {tier.popular && <div className="absolute top-0 -translate-y-1/2 left-1/2 -translate-x-1/2 bg-purple-500 px-3 py-1 text-sm font-semibold text-white rounded-full">Most Popular</div>}
+                            <h3 className="text-2xl font-bold text-white">{tier.name}</h3>
+                            <p className="mt-4 text-gray-400 h-12">{tier.description}</p>
+                            <div className="mt-6">
+                                <span className="text-4xl font-extrabold text-white">{tier.price === 'Custom' ? tier.price : `$${tier.price}`}</span>
+                                {tier.price !== 'Custom' && <span className="text-base font-medium text-gray-400">/month</span>}
+                            </div>
+                            <ul className="mt-8 space-y-4">
+                                {tier.features.map((feature, index) => (
+                                    <li key={index} className="flex items-start">
+                                        <div className="flex-shrink-0">
+                                            <CheckIcon className="h-6 w-6 text-green-400" />
+                                        </div>
+                                        <p className="ml-3 text-gray-300">{feature}</p>
+                                    </li>
+                                ))}
+                            </ul>
+                            <div className="mt-10">
+                                <button onClick={() => handleSetPage('book-a-slot', tier.name)} className={`w-full py-3 px-6 text-lg font-semibold rounded-lg transition-colors ${tier.popular ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-gray-700 text-white hover:bg-gray-600'}`}>
+                                    {tier.cta}
+                                </button>
                             </div>
                         </div>
                     ))}
                 </div>
             </div>
-        </PageWrapper>
+        </div>
     );
 };
 
+const AIConsultancyPage = ({ setPage }) => {
+    const services = [
+        { icon: <BrainCircuitIcon className="w-10 h-10 text-purple-400 mb-4"/>, title: "Lead Generation as a Service (LGaaS)", description: "We build and manage a semi-autonomous, AI-powered lead generation system that delivers a consistent pipeline of qualified meetings directly to your sales team's calendar." },
+        { icon: <SeoIcon className="w-10 h-10 text-purple-400 mb-4"/>, title: "AI-Enhanced Content Marketing", description: "A data-driven content strategy and execution service that uses AI to identify high-opportunity topics and ensure every piece of content is optimized to rank and perform." },
+        { icon: <PpcIcon className="w-10 h-10 text-purple-400 mb-4"/>, title: "Intelligent Ad Management", description: "We manage your social media presence and paid ad campaigns with a focus on maximizing ROI through AI-powered optimization and creative testing." },
+    ];
 
-// --- V4: Book a Slot Page ---
-const BookSlotPage = () => {
-    const [formData, setFormData] = useState({
-        name: '',
-        company: '',
-        email: '',
-        serviceType: '',
-        details: ''
-    });
-    const [submitted, setSubmitted] = useState(false);
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            // In a real app, you would save this to a 'leads' collection
-            console.log("Form submitted:", formData);
-            await addDoc(collection(db, "leads"), formData);
-            setSubmitted(true);
-        } catch (error) {
-            console.error("Error submitting form: ", error);
-            alert("There was an error submitting your request. Please try again.");
-        }
-    };
-
-    if (submitted) {
-        return (
-            <PageWrapper>
-                <div className="container section-padding text-center">
-                    <h1 className="page-title">Thank You!</h1>
-                    <p className="page-subtitle">Your request has been received. We'll be in touch within 24 hours to schedule your consultation.</p>
-                </div>
-            </PageWrapper>
-        );
-    }
+    const consultancyPhases = [
+        { phase: 1, title: "Discovery & AI-Readiness Audit", duration: "2 Weeks", description: "We conduct deep-dive workshops with your teams and audit your existing tech stack to identify key gaps and opportunities. We deliver an 'AI-Readiness Scorecard'." },
+        { phase: 2, title: "Custom Strategy & Stack Design", duration: "2 Weeks", description: "Based on the audit, we design a custom 'Agentic Stack' and strategic roadmap for your business, including software recommendations and implementation timelines." },
+        { phase: 3, title: "Implementation & Integration", duration: "4-6 Weeks", description: "Our team provides hands-on support to set up, configure, and integrate your new AI tools with your existing CRM and workflows, building out the initial automated processes." },
+        { phase: 4, title: "Team Training & Governance", duration: "2 Weeks", description: "We conduct hands-on training workshops to upskill your team and help you establish an ethical framework for AI use, delivering a final 'AI Playbook'." },
+    ];
 
     return (
-        <PageWrapper>
-            <div className="container section-padding">
-                <h1 className="page-title text-center">Book Your Free Consultation</h1>
-                <p className="page-subtitle text-center">Fill out the form below, and let's talk about how we can help you grow. No pressure, no obligation.</p>
-                <form onSubmit={handleSubmit} className="contact-form" style={{maxWidth: '700px', margin: '0 auto'}}>
-                    <div className="form-group">
-                        <label htmlFor="name">Full Name</label>
-                        <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} />
+        <div className="bg-gray-900 text-white pt-28 pb-20 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto">
+                <div className="text-center">
+                    <h2 className="text-base font-semibold text-purple-400 tracking-wide uppercase">AI Services & Consultancy</h2>
+                    <p className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl">The Next Generation of Agency Services</p>
+                    <p className="mt-4 max-w-3xl mx-auto text-xl text-gray-400">
+                        Move beyond traditional marketing. We offer both done-for-you AI-powered services and strategic consultancy to build AI capabilities within your own team.
+                    </p>
+                </div>
+
+                <div className="mt-20">
+                    <h3 className="text-2xl font-bold text-center mb-12">AI-Powered Service Portfolio</h3>
+                    <div className="grid md:grid-cols-3 gap-8">
+                        {services.map(service => (
+                            <div key={service.title} className="bg-gray-800 p-8 rounded-lg">
+                                {service.icon}
+                                <h4 className="text-xl font-bold mt-4 mb-2">{service.title}</h4>
+                                <p className="text-gray-400">{service.description}</p>
+                            </div>
+                        ))}
                     </div>
-                    <div className="form-group">
-                        <label htmlFor="company">Company Name</label>
-                        <input type="text" id="company" name="company" value={formData.company} onChange={handleChange} />
+                </div>
+
+                <div className="mt-24">
+                    <div className="text-center">
+                        <h2 className="text-base font-semibold text-purple-400 tracking-wide uppercase">High-Touch Partnership</h2>
+                        <p className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">The AI Transformation Consultancy</p>
+                        <p className="mt-4 max-w-3xl mx-auto text-xl text-gray-400">
+                            For businesses ready to build a lasting competitive advantage by embedding AI into their core operations. We don't just run your campaigns; we transform your team.
+                        </p>
                     </div>
-                     <div className="form-group">
-                        <label htmlFor="email">Email Address</label>
-                        <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} />
+
+                    <div className="mt-16 relative">
+                         <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-gray-700/50 hidden md:block"></div>
+                        {consultancyPhases.map((phase, index) => (
+                             <div key={phase.phase} className={`mb-12 flex items-center w-full ${index % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'}`}>
+                                <div className="hidden md:flex w-5/12"></div>
+                                <div className="hidden md:flex justify-center w-1/12">
+                                    <div className="w-8 h-8 bg-purple-500 rounded-full border-4 border-gray-900 z-10 flex items-center justify-center font-bold">{phase.phase}</div>
+                                </div>
+                                <div className="w-full md:w-5/12 bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                                   <p className="text-sm font-semibold text-purple-400">{phase.duration}</p>
+                                   <h4 className="text-xl font-bold text-white mb-2">{phase.title}</h4>
+                                   <p className="text-gray-300">{phase.description}</p>
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                     <div className="form-group">
-                        <label htmlFor="serviceType">What service are you interested in?</label>
-                        <select id="serviceType" name="serviceType" value={formData.serviceType} onChange={handleChange}>
-                            <option value="">Select a service...</option>
-                            <option value="AI Lead Generation">AI Lead Generation</option>
-                            <option value="Content & Branding">Content & Branding</option>
-                            <option value="Performance Marketing">Performance Marketing</option>
-                            <option value="Full Package">Full Package</option>
-                            <option value="Not Sure Yet">Not Sure Yet</option>
-                        </select>
-                    </div>
-                     <div className="form-group">
-                        <label htmlFor="details">Tell us about your project</label>
-                        <textarea id="details" name="details" rows="5" value={formData.details} onChange={handleChange}></textarea>
-                    </div>
-                    <button type="submit" className="btn btn-primary">Submit Request</button>
-                </form>
+                </div>
+
+                <div className="mt-16 text-center bg-gray-800/50 p-10 rounded-2xl">
+                    <h3 className="text-2xl font-bold">Is AI Consultancy Right For You?</h3>
+                    <p className="mt-4 max-w-2xl mx-auto text-lg text-gray-400">
+                        This high-touch service is designed for mid-to-large sized companies with an existing marketing team who are looking to make a foundational investment in their technological future.
+                    </p>
+                    <button onClick={() => setPage('contact')} className="mt-8 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-8 rounded-full text-lg transition-transform transform hover:scale-105">
+                        Request a Strategy Session
+                    </button>
+                </div>
             </div>
-        </PageWrapper>
+        </div>
     );
 };
 
-// --- Contact Page ---
-const ContactPage = () => (
-     <PageWrapper>
-        <div className="container section-padding">
-            <h1 className="page-title text-center">Get in Touch</h1>
-            <p className="page-subtitle text-center">Have a general question? We'd love to hear from you.</p>
-            <div className="contact-info">
-                <p><strong>Email:</strong> info@aigenix.com</p>
-                <p><strong>Location:</strong> Chattogram, Bangladesh (Serving clients globally)</p>
-                 <p>For project inquiries, please use our <Link to="/book-a-slot">consultation booking form</Link>.</p>
+
+const WhyUsPage = ({ stats, setPage }) => {
+  const processSteps = [
+    { title: "1. AI-Powered Discovery", description: "Our process begins with AI. We deploy intelligent agents to analyze market trends, competitor landscapes, and audience behavior. This data-first approach uncovers hidden opportunities and ensures our strategy is built on a foundation of facts, not assumptions." },
+    { title: "2. Human-Led Strategy", description: "Data is nothing without insight. Our human experts—strategists, marketers, and creatives—take the AI's findings and craft a bespoke growth plan. This is where we define your brand's voice, map the customer journey, and set clear, ambitious goals." },
+    { title: "3. Hybrid Execution", description: "We combine the best of both worlds in execution. AI handles the heavy lifting—optimizing ad bids, personalizing outreach at scale—while our team focuses on creating compelling content, building genuine relationships, and ensuring every deliverable is flawless." },
+    { title: "4. Measurable Growth", description: "Our partnership is judged by one metric: your success. We provide transparent, real-time dashboards showing exactly how our efforts translate into tangible results—more leads, higher conversions, and a stronger bottom line. We don't just promise growth; we prove it." }
+  ];
+  
+  const corePhilosophies = [
+    { icon: <PartnershipIcon className="h-10 w-10 text-purple-400 mb-4"/>, title: "Strategic Partnership", description: "We're not just a vendor; we're an extension of your team. We invest deeply in understanding your business to function as a true strategic partner." },
+    { icon: <TransparencyIcon className="h-10 w-10 text-purple-400 mb-4"/>, title: "Radical Transparency", description: "You'll never be in the dark. We provide clear, honest communication and full access to performance data. Trust is built on transparency." },
+    { icon: <InnovationIcon className="h-10 w-10 text-purple-400 mb-4"/>, title: "Continuous Innovation", description: "The digital world never stands still, and neither do we. We are relentlessly curious, constantly testing new technologies and strategies to keep you ahead." }
+  ];
+
+  const whyUsPoints = [
+    { icon: <BrainCircuitIcon className="h-10 w-10 text-purple-400 mb-4" />, stat: stats?.automationEfficiency || '90%', statLabel: "Automation Efficiency" },
+    { icon: <RocketIcon className="h-10 w-10 text-purple-400 mb-4" />, stat: stats?.deliverySpeed || '48-Hour', statLabel: "Average Turnaround" },
+    { icon: <GlobeIcon className="h-10 w-10 text-purple-400 mb-4" />, stat: stats?.countriesReached || '25+', statLabel: "Countries Reached" },
+    { icon: <BarChartIcon className="h-10 w-10 text-purple-400 mb-4" />, stat: stats?.roiIncrease || '300%', statLabel: "Average Client ROI" }
+  ];
+
+  return (
+    <div className="bg-gray-900 text-white">
+      <div className="pt-28 pb-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto text-center">
+          <h2 className="text-base font-semibold text-purple-400 tracking-wide uppercase">Our Advantage</h2>
+          <p className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl">The AI-Human Synergy</p>
+          <p className="mt-4 max-w-3xl mx-auto text-xl text-gray-400">
+            We've engineered a new kind of agency, one that fuses the analytical power of artificial intelligence with the creative and strategic intuition of human experts.
+          </p>
+        </div>
+      </div>
+
+      <div className="py-20 bg-gray-900/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h3 className="text-3xl font-bold tracking-tight">Our Proven Process for Growth</h3>
+            <p className="mt-4 max-w-2xl mx-auto text-lg text-gray-400">From data-driven insights to tangible business outcomes, here’s how we make it happen.</p>
+          </div>
+          <div className="relative">
+            <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-gray-700/50 hidden md:block"></div>
+            {processSteps.map((step, index) => (
+              <div key={index} className={`mb-12 flex items-center w-full ${index % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'}`}>
+                <div className="hidden md:flex w-5/12"></div>
+                <div className="hidden md:flex justify-center w-1/12">
+                  <div className="w-6 h-6 bg-purple-500 rounded-full border-4 border-gray-900 z-10"></div>
+                </div>
+                <div className="w-full md:w-5/12 bg-gray-800 p-6 rounded-xl shadow-lg hover:shadow-purple-500/10 transition-shadow border border-gray-700">
+                   <h4 className="text-xl font-bold text-purple-400 mb-2">{step.title}</h4>
+                   <p className="text-gray-300">{step.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      
+      <div className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h3 className="text-3xl font-bold tracking-tight">More Than an Agency, We're Your Partner</h3>
+            <p className="mt-4 max-w-2xl mx-auto text-lg text-gray-400">Our success is built on a foundation of core beliefs that guide every client relationship.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            {corePhilosophies.map((philosophy, index) => (
+              <div key={index} className="bg-gray-800/50 p-8 rounded-2xl transform hover:-translate-y-2 transition-transform duration-300 border border-transparent hover:border-purple-500/50">
+                {philosophy.icon}
+                <h4 className="text-2xl font-bold mb-3">{philosophy.title}</h4>
+                <p className="text-gray-400">{philosophy.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-gray-800 py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h3 className="text-3xl font-bold tracking-tight">The Proof Is in the Numbers</h3>
+            <p className="mt-4 max-w-2xl mx-auto text-lg text-gray-400">Our model isn't just theory. It delivers quantifiable results.</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            {whyUsPoints.map((point, index) => (
+              <div key={index} className="flex flex-col items-center">
+                {point.icon}
+                <span className="text-4xl font-extrabold text-white">{point.stat}</span>
+                <span className="text-md text-gray-400 mt-1">{point.statLabel}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      
+      <div className="bg-gray-900 py-20 text-center px-4">
+        <h3 className="text-3xl font-bold tracking-tight text-white">Ready to See What We Can Build Together?</h3>
+        <p className="mt-4 max-w-2xl mx-auto text-lg text-gray-400">Let's turn our process into your success story. Explore our work and see the results for yourself.</p>
+        <div className="mt-8">
+          <button onClick={() => setPage('portfolio')} className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-8 rounded-full text-lg transition-transform transform hover:scale-105 shadow-lg shadow-purple-500/30">
+            View Our Case Studies
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ProjectModal = ({ project, onClose }) => {
+    if (!project) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 p-4 animate-fade-in" onClick={onClose}>
+            <div className="bg-gray-800 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative border border-gray-700" onClick={e => e.stopPropagation()}>
+                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition z-10">
+                    <CloseIcon className="w-8 h-8"/>
+                </button>
+                <div className="p-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div className="md:col-span-2">
+                            <h2 className="text-3xl font-bold text-white mb-2">{project.title}</h2>
+                            <p className="text-purple-400 font-semibold mb-4">{project.clientName} &bull; {project.projectDate}</p>
+                            <img 
+                                src={project.imageUrl || `https://placehold.co/800x500/1f2937/a78bfa?text=Project+Image`} 
+                                alt={project.title} 
+                                className="w-full h-auto object-cover rounded-lg mb-6 shadow-lg"
+                                onError={(e) => { e.target.onerror = null; e.target.src=`https://placehold.co/800x500/1f2937/a78bfa?text=Image+Error`; }}
+                            />
+                             {project.testimonial && (
+                                <div className="bg-gray-700/50 p-6 rounded-lg mb-6 border-l-4 border-purple-500">
+                                    <p className="italic text-gray-300">"{project.testimonial}"</p>
+                                </div>
+                            )}
+                            <div className="space-y-6 text-gray-300">
+                                <div>
+                                    <h3 className="text-xl font-bold text-white mb-2">The Challenge</h3>
+                                    <p>{project.challenge}</p>
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-white mb-2">Our Solution</h3>
+                                    <p>{project.solution}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="md:col-span-1 space-y-6">
+                            <div>
+                                <h3 className="text-lg font-bold text-purple-400 uppercase tracking-wider mb-3">Services</h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {project.services?.map(service => (
+                                        <span key={service} className="bg-gray-700 text-gray-300 text-xs font-medium px-2.5 py-1 rounded-full">{service}</span>
+                                    ))}
+                                </div>
+                            </div>
+                             <div>
+                                <h3 className="text-lg font-bold text-purple-400 uppercase tracking-wider mb-3">Results</h3>
+                                <div className="space-y-3">
+                                    {project.results?.map(result => (
+                                        <div key={result.label} className="bg-gray-700/50 p-3 rounded-lg text-center">
+                                            <p className="text-2xl font-bold text-white">{result.value}</p>
+                                            <p className="text-sm text-gray-400">{result.label}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            {project.liveUrl && (
+                                <a href={project.liveUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition">
+                                    View Live Project <ExternalLinkIcon className="ml-2 w-5 h-5"/>
+                                </a>
+                            )}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </PageWrapper>
-);
+    );
+};
 
-// --- Admin Page ---
-const AdminPage = () => {
-    const { user } = useAuth();
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const navigate = useNavigate();
 
-    const handleLogin = async (e) => {
+const PortfolioPage = ({ portfolioItems }) => {
+  const [filter, setFilter] = useState('All');
+  const [selectedProject, setSelectedProject] = useState(null);
+  const categories = ['All', ...new Set(portfolioItems.map(item => item.category).filter(Boolean))];
+
+  const filteredItems = portfolioItems
+    .filter(item => item.isVisible)
+    .filter(item => filter === 'All' || item.category === filter);
+
+  return (
+    <>
+      <ProjectModal project={selectedProject} onClose={() => setSelectedProject(null)} />
+      <div className="bg-gray-900 text-white pt-28 pb-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-base font-semibold text-purple-400 tracking-wide uppercase">Our Work</h2>
+            <p className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">Case Studies & Creations</p>
+            <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-400">
+              Explore how we've helped our clients overcome challenges and achieve remarkable results.
+            </p>
+          </div>
+          <div className="flex justify-center flex-wrap gap-2 mb-12">
+            {categories.map(category => (
+              <button
+                key={category}
+                onClick={() => setFilter(category)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+                  filter === category
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {filteredItems.map(item => (
+              <div key={item.id} className="bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-purple-500/20 transition-all duration-300 group flex flex-col border border-gray-700/50 hover:border-purple-500/50">
+                <div className="relative overflow-hidden">
+                  <img 
+                    src={item.imageUrl || `https://placehold.co/600x400/111827/a78bfa?text=${item.title}`} 
+                    alt={item.title} 
+                    className="w-full h-60 object-cover group-hover:scale-110 transition-transform duration-500"
+                    onError={(e) => { e.target.onerror = null; e.target.src=`https://placehold.co/600x400/111827/a78bfa?text=Image+Error`; }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                </div>
+                <div className="p-6 flex flex-col flex-grow">
+                  <p className="text-sm text-purple-400 font-semibold">{item.category}</p>
+                  <h3 className="text-xl font-bold mt-2 mb-2">{item.title}</h3>
+                  <p className="text-gray-400 text-sm flex-grow mb-4">{item.description}</p>
+                  <div className="flex flex-wrap gap-1 mt-auto mb-4">
+                      {item.services?.slice(0, 3).map(service => (
+                          <span key={service} className="bg-gray-700 text-gray-300 text-xs font-medium px-2.5 py-1 rounded-full">{service}</span>
+                      ))}
+                  </div>
+                  <button onClick={() => setSelectedProject(item)} className="mt-auto w-full bg-gray-700 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg transition-all transform group-hover:bg-purple-600">
+                    View Case Study
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+const BlogPage = ({ posts, setSelectedPost }) => {
+    const visiblePosts = posts.filter(post => post.isVisible);
+    return (
+        <div className="bg-gray-900 text-white pt-28 pb-20 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto">
+                <div className="text-center mb-12">
+                    <h2 className="text-base font-semibold text-purple-400 tracking-wide uppercase">Insights & Ideas</h2>
+                    <p className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">From Our Digital Workbench</p>
+                    <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-400">
+                        Thoughts on AI, marketing, and the future of growth from our team of human strategists.
+                    </p>
+                </div>
+                <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                    {visiblePosts.map(post => (
+                        <div key={post.id} onClick={() => setSelectedPost(post)} className="cursor-pointer bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-purple-500/20 transition-all duration-300 group flex flex-col border border-gray-700/50 hover:border-purple-500/50">
+                            <div className="relative overflow-hidden">
+                                <img 
+                                    src={post.featuredImageUrl || `https://placehold.co/600x400/111827/a78bfa?text=Insight`} 
+                                    alt={post.title} 
+                                    className="w-full h-60 object-cover group-hover:scale-110 transition-transform duration-500"
+                                    onError={(e) => { e.target.onerror = null; e.target.src=`https://placehold.co/600x400/111827/a78bfa?text=Image+Error`; }}
+                                />
+                            </div>
+                            <div className="p-6 flex flex-col flex-grow">
+                                <h3 className="text-xl font-bold mt-2 mb-2 text-white">{post.title}</h3>
+                                <p className="text-gray-400 text-sm flex-grow mb-4">{post.excerpt}</p>
+                                <div className="mt-auto text-sm text-purple-400 font-semibold group-hover:text-pink-500 transition-colors">
+                                    Read More &rarr;
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const BlogPostPage = ({ post, setSelectedPost }) => {
+    return (
+        <div className="bg-gray-900 text-white pt-28 pb-20 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-3xl mx-auto">
+                <button onClick={() => setSelectedPost(null)} className="mb-8 text-purple-400 hover:text-purple-300">&larr; Back to Insights</button>
+                <h1 className="text-4xl font-extrabold text-white mb-4">{post.title}</h1>
+                <p className="text-gray-400 mb-8">By {post.author} on {new Date(post.publishedDate?.seconds * 1000).toLocaleDateString()}</p>
+                <img 
+                    src={post.featuredImageUrl || `https://placehold.co/1200x600/111827/a78bfa?text=Insight`} 
+                    alt={post.title} 
+                    className="w-full h-auto object-cover rounded-lg mb-8 shadow-lg"
+                />
+                <div className="prose prose-invert prose-lg max-w-none" dangerouslySetInnerHTML={{ __html: post.content?.replace(/\n/g, '<br />') }}>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const RoiCalculatorPage = () => {
+    const [adSpend, setAdSpend] = useState(1000);
+    const [cpc, setCpc] = useState(2.50);
+    const [conversionRate, setConversionRate] = useState(2);
+    const [saleValue, setSaleValue] = useState(150);
+    const [results, setResults] = useState(null);
+
+    const calculateRoi = (e) => {
         e.preventDefault();
-        setError('');
-        try {
-            await signInWithEmailAndPassword(auth, email, password);
-            navigate('/admin');
-        } catch (err) {
-            setError('Failed to log in. Please check your credentials.');
-            console.error(err);
-        }
+        const clicks = adSpend / cpc;
+        const conversions = clicks * (conversionRate / 100);
+        const revenue = conversions * saleValue;
+        const profit = revenue - adSpend;
+        const roas = revenue / adSpend;
+
+        // AI Optimization Assumptions
+        const aiCpc = cpc * 0.75; // 25% reduction
+        const aiConversionRate = conversionRate * 1.3; // 30% increase
+        const aiClicks = adSpend / aiCpc;
+        const aiConversions = aiClicks * (aiConversionRate / 100);
+        const aiRevenue = aiConversions * saleValue;
+        const aiProfit = aiRevenue - adSpend;
+        const aiRoas = aiRevenue / adSpend;
+
+        setResults({
+            current: { revenue, profit, roas },
+            ai: { revenue: aiRevenue, profit: aiProfit, roas: aiRoas }
+        });
     };
 
-    if (!user) {
-        return (
-            <PageWrapper>
-                <div className="container section-padding">
-                    <h1 className="page-title text-center">Admin Login</h1>
-                    <form onSubmit={handleLogin} className="login-form">
-                        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" required />
-                        <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" required />
-                        {error && <p className="error">{error}</p>}
-                        <button type="submit" className="btn btn-primary">Login</button>
+    return (
+        <div className="bg-gray-900 text-white pt-28 pb-20 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-4xl mx-auto">
+                <div className="text-center mb-12">
+                    <h2 className="text-base font-semibold text-purple-400 tracking-wide uppercase">ROI Calculator</h2>
+                    <p className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">Unlock Your Potential Growth</p>
+                    <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-400">
+                        Use our simple calculator to estimate the potential impact our AI-driven approach could have on your bottom line.
+                    </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <form onSubmit={calculateRoi} className="space-y-6 bg-gray-800/50 p-8 rounded-2xl shadow-lg border border-gray-700/50">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300">Monthly Ad Spend ($)</label>
+                            <input type="number" value={adSpend} onChange={e => setAdSpend(parseFloat(e.target.value))} className="mt-1 block w-full bg-gray-700 rounded-md py-3 px-4 text-white focus:ring-purple-500" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300">Average Cost Per Click (CPC) ($)</label>
+                            <input type="number" step="0.01" value={cpc} onChange={e => setCpc(parseFloat(e.target.value))} className="mt-1 block w-full bg-gray-700 rounded-md py-3 px-4 text-white focus:ring-purple-500" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300">Conversion Rate (%)</label>
+                            <input type="number" step="0.1" value={conversionRate} onChange={e => setConversionRate(parseFloat(e.target.value))} className="mt-1 block w-full bg-gray-700 rounded-md py-3 px-4 text-white focus:ring-purple-500" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300">Average Sale Value ($)</label>
+                            <input type="number" value={saleValue} onChange={e => setSaleValue(parseFloat(e.target.value))} className="mt-1 block w-full bg-gray-700 rounded-md py-3 px-4 text-white focus:ring-purple-500" />
+                        </div>
+                        <div>
+                            <button type="submit" className="w-full flex justify-center py-3 px-4 rounded-md text-lg font-medium text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                                Calculate ROI
+                            </button>
+                        </div>
+                    </form>
+                    <div className="bg-gray-800/50 p-8 rounded-2xl shadow-lg border border-gray-700/50 flex flex-col justify-center">
+                        {results ? (
+                            <div className="space-y-6">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-400">Current Estimated Results</h3>
+                                    <p className="text-3xl font-bold text-white">${results.current.revenue.toFixed(2)} <span className="text-lg font-normal">Revenue</span></p>
+                                    <p className="text-xl font-semibold text-green-400">${results.current.profit.toFixed(2)} <span className="text-lg font-normal">Profit</span></p>
+                                </div>
+                                <div className="border-t border-gray-700 my-4"></div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-purple-400">AI-Optimized Potential</h3>
+                                    <p className="text-3xl font-bold text-white">${results.ai.revenue.toFixed(2)} <span className="text-lg font-normal">Revenue</span></p>
+                                    <p className="text-xl font-semibold text-green-400">${results.ai.profit.toFixed(2)} <span className="text-lg font-normal">Profit</span></p>
+                                    <p className="mt-2 text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
+                                        +${(results.ai.profit - results.current.profit).toFixed(2)} Additional Profit
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center">
+                                <BarChartIcon className="w-16 h-16 mx-auto text-gray-600 mb-4"/>
+                                <h3 className="text-xl font-bold">Your results will appear here.</h3>
+                                <p className="text-gray-400">Fill out the form to see your potential.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const ContactPage = ({ setPage }) => (
+    <div className="bg-gray-900 text-white pt-28 pb-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto text-center">
+            <h2 className="text-base font-semibold text-purple-400 tracking-wide uppercase">Get In Touch</h2>
+            <p className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">We're Here to Help</p>
+            <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-400">
+                Have a general question or just want to say hello? Drop us a line. For project inquiries, please use our consultation booking form.
+            </p>
+            <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="bg-gray-800/50 p-8 rounded-2xl shadow-lg border border-gray-700/50 text-left">
+                    <h3 className="text-2xl font-bold mb-4">Send us a Message</h3>
+                    <form className="space-y-6">
+                        <div>
+                            <label htmlFor="contact-name" className="block text-sm font-medium text-gray-300">Full Name</label>
+                            <input type="text" name="contact-name" id="contact-name" className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                        </div>
+                        <div>
+                            <label htmlFor="contact-email" className="block text-sm font-medium text-gray-300">Email Address</label>
+                            <input type="email" name="contact-email" id="contact-email" className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                        </div>
+                        <div>
+                            <label htmlFor="contact-message" className="block text-sm font-medium text-gray-300">Your Message</label>
+                            <textarea id="contact-message" name="contact-message" rows="4" className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"></textarea>
+                        </div>
+                        <div>
+                            <button type="submit" className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-gray-600 hover:bg-gray-500">
+                                Send
+                            </button>
+                        </div>
                     </form>
                 </div>
-            </PageWrapper>
-        );
-    }
-
-    return (
-        <PageWrapper>
-            <div className="container section-padding">
-                <h1 className="page-title">Admin Dashboard</h1>
-                <p>Welcome, admin. Here you can manage your site's content.</p>
-                <StatsEditor />
-                <PortfolioEditor />
-            </div>
-        </PageWrapper>
-    );
-};
-
-// --- Admin Components ---
-const StatsEditor = () => {
-    const [stats, setStats] = useState({ automationEfficiency: 0, deliverySpeed: 0, countriesReached: 0, roiIncrease: 0 });
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchStats = async () => {
-            const docRef = doc(db, 'stats', 'whyUsStats');
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                setStats(docSnap.data());
-            }
-            setLoading(false);
-        };
-        fetchStats();
-    }, []);
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setStats(prev => ({ ...prev, [name]: Number(value) }));
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const docRef = doc(db, 'stats', 'whyUsStats');
-        await updateDoc(docRef, stats);
-        alert('Stats updated successfully!');
-    };
-    
-    if(loading) return <p>Loading stats editor...</p>
-
-    return (
-        <div className="admin-section">
-            <h2>Edit 'Why Us' Statistics</h2>
-            <form onSubmit={handleSubmit}>
-                {Object.keys(stats).map(key => (
-                    <div className="form-group" key={key}>
-                        <label htmlFor={key}>{key}</label>
-                        <input type="number" id={key} name={key} value={stats[key]} onChange={handleChange} />
+                <div className="bg-gray-800/50 p-8 rounded-2xl shadow-lg border border-gray-700/50 flex flex-col justify-center">
+                    <h3 className="text-2xl font-bold mb-6">Ready to Start a Project?</h3>
+                    <p className="text-lg text-gray-300 mb-6">
+                        Let's dive into the details. Our free consultation is the first step towards a powerful partnership and measurable growth.
+                    </p>
+                    <button onClick={() => setPage('book-a-slot')} className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-4 px-8 rounded-lg text-lg transition-transform transform hover:scale-105">
+                        Book a Free Consultation
+                    </button>
+                    <div className="mt-10 text-left space-y-4">
+                        <p className="flex items-center"><svg className="w-5 h-5 mr-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg> hello@aigency.com</p>
+                        <p className="flex items-center"><svg className="w-5 h-5 mr-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg> +880 123 456 7890</p>
                     </div>
-                ))}
-                <button type="submit" className="btn btn-secondary">Update Stats</button>
-            </form>
-        </div>
-    );
-};
-
-const PortfolioEditor = () => {
-    const [portfolio, setPortfolio] = useState([]);
-    const [newItem, setNewItem] = useState({ title: '', description: '', category: '', imageUrl: '' });
-    
-    useEffect(() => {
-        const fetchPortfolio = async () => {
-            const portfolioCol = collection(db, 'portfolio');
-            const portfolioSnapshot = await getDocs(portfolioCol);
-            setPortfolio(portfolioSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        };
-        fetchPortfolio();
-    }, []);
-
-    const handleNewItemChange = (e) => {
-        setNewItem({ ...newItem, [e.target.name]: e.target.value });
-    };
-
-    const handleAddItem = async (e) => {
-        e.preventDefault();
-        if (!newItem.title) return;
-        const docRef = await addDoc(collection(db, "portfolio"), newItem);
-        setPortfolio([...portfolio, {id: docRef.id, ...newItem}]);
-        setNewItem({ title: '', description: '', category: '', imageUrl: '' });
-        alert('Portfolio item added!');
-    };
-
-    const handleDelete = async (id) => {
-        await deleteDoc(doc(db, "portfolio", id));
-        setPortfolio(portfolio.filter(item => item.id !== id));
-        alert('Portfolio item deleted!');
-    }
-
-    return (
-         <div className="admin-section">
-            <h2>Manage Portfolio</h2>
-            <form onSubmit={handleAddItem}>
-                <h3>Add New Project</h3>
-                <input type="text" name="title" value={newItem.title} onChange={handleNewItemChange} placeholder="Title" />
-                <input type="text" name="category" value={newItem.category} onChange={handleNewItemChange} placeholder="Category (e.g., SEO, Branding)" />
-                <textarea name="description" value={newItem.description} onChange={handleNewItemChange} placeholder="Description"></textarea>
-                <input type="text" name="imageUrl" value={newItem.imageUrl} onChange={handleNewItemChange} placeholder="Image URL" />
-                <button type="submit" className="btn btn-secondary">Add Item</button>
-            </form>
-
-            <div className="portfolio-list">
-                <h3>Existing Projects</h3>
-                {portfolio.map(item => (
-                    <div key={item.id} className="portfolio-list-item">
-                        <p>{item.title}</p>
-                        <button onClick={() => handleDelete(item.id)} className="btn-delete">Delete</button>
-                    </div>
-                ))}
+                </div>
             </div>
         </div>
-    );
-};
-
-// --- NotFound Page ---
-const NotFoundPage = () => (
-    <PageWrapper>
-        <div className="container section-padding text-center">
-            <h1>404 - Not Found</h1>
-            <p>The page you are looking for does not exist.</p>
-            <Link to="/">Go Home</Link>
-        </div>
-    </PageWrapper>
+    </div>
 );
 
+const BookSlotPage = ({ selectedPackage }) => {
+    const [serviceType, setServiceType] = useState(selectedPackage || 'Select a service...');
 
-export default App;
+    useEffect(() => {
+        setServiceType(selectedPackage || 'Select a service...');
+    }, [selectedPackage]);
+
+    return (
+        <div className="bg-gray-900 text-white pt-28 pb-20 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl mx-auto">
+                <div className="text-center mb-12">
+                    <h2 className="text-base font-semibold text-purple-400 tracking-wide uppercase">Let's Build Together</h2>
+                    <p className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">Book Your Free Consultation</p>
+                    <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-400">
+                        This is the first step. Tell us about your project, your goals, and your challenges. We're here to listen and map out a path to success. No obligations, just possibilities.
+                    </p>
+                </div>
+                <form className="space-y-6 bg-gray-800/50 p-8 rounded-2xl shadow-lg border border-gray-700/50">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label htmlFor="book-name" className="block text-sm font-medium text-gray-300">Full Name</label>
+                            <input type="text" name="book-name" id="book-name" className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                        </div>
+                        <div>
+                            <label htmlFor="book-company" className="block text-sm font-medium text-gray-300">Company Name</label>
+                            <input type="text" name="book-company" id="book-company" className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                        </div>
+                    </div>
+                     <div>
+                        <label htmlFor="book-email" className="block text-sm font-medium text-gray-300">Email Address</label>
+                        <input type="email" name="book-email" id="book-email" className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                    </div>
+                    <div>
+                        <label htmlFor="service-type" className="block text-sm font-medium text-gray-300">What service are you interested in?</label>
+                        <select id="service-type" name="service-type" value={serviceType} onChange={(e) => setServiceType(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            <option>Select a service...</option>
+                            <option value="Essential">Essential Plan</option>
+                            <option value="Growth">Growth Plan</option>
+                            <option value="Scale">Scale Plan</option>
+                            <option>Branding & Identity</option>
+                            <option>Social Media Marketing</option>
+                            <option>Search Engine Optimization (SEO)</option>
+                            <option>Performance Marketing (PPC)</option>
+                            <option>Web Design & Development</option>
+                            <option>Video Production</option>
+                            <option>Full Growth Package</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label htmlFor="book-details" className="block text-sm font-medium text-gray-300">Tell us about your project</label>
+                        <textarea id="book-details" name="book-details" rows="5" placeholder="What are your goals? What challenges are you facing?" className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"></textarea>
+                    </div>
+                    <div>
+                        <button type="submit" className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 focus:ring-offset-gray-900">
+                            Submit Request
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+const AdminLoginPage = ({ setPage, setIsAdmin }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const ADMIN_EMAIL = "admin@test.com";
+  const ADMIN_PASSWORD = "password123";
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    setError('');
+    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+      setIsAdmin(true);
+      setPage('admin');
+    } else {
+      setError('Invalid credentials. Please try again.');
+    }
+  };
+
+  return (
+    <div className="bg-gray-900 min-h-screen flex items-center justify-center">
+      <div className="max-w-md w-full bg-gray-800 p-8 rounded-lg shadow-lg">
+        <h2 className="text-center text-3xl font-extrabold text-white mb-6">Admin Login</h2>
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div>
+            <label className="text-sm font-bold text-gray-300 block mb-2">Email</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-3 text-white bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder={ADMIN_EMAIL} />
+          </div>
+          <div>
+            <label className="text-sm font-bold text-gray-300 block mb-2">Password</label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 text-white bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder={ADMIN_PASSWORD} />
+          </div>
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+          <div>
+            <button type="submit" className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 rounded-md text-white font-medium">Log In</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const ToggleSwitch = ({ isVisible, onToggle }) => (
+    <button onClick={onToggle} className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${isVisible ? 'bg-purple-600' : 'bg-gray-600'}`}>
+        <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${isVisible ? 'translate-x-6' : 'translate-x-1'}`}/>
+    </button>
+);
+
+const AdminDashboard = ({ portfolioItems, setPortfolioItems, stats, blogPosts, setBlogPosts }) => {
+    const [activeTab, setActiveTab] = useState('portfolio');
+    
+    const samplePortfolioData = { title: "Scaling E-commerce Sales for Apex Apparel", clientName: "Apex Apparel Ltd.", projectDate: "Q1 2025", category: "E-commerce", imageUrl: "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?q=80&w=2070&auto=format&fit=crop", description: "A comprehensive performance marketing and SEO strategy to boost online sales for a leading Bangladeshi clothing brand.", challenge: "Apex Apparel faced stagnant online sales and low brand visibility outside of their physical stores. Their cost-per-acquisition on social media was unsustainably high.", solution: "We implemented an AI-driven PPC campaign targeting high-intent keywords and lookalike audiences. Simultaneously, a full-site SEO audit and content strategy were executed to capture organic traffic for relevant fashion terms.", services: "Performance Marketing, SEO, Conversion Rate Optimization", results: "+250%:Online Sales, -40%:Cost Per Acquisition, +180%:Organic Traffic", testimonial: "The results were phenomenal. AI.gency didn't just run ads; they built a predictable revenue engine for our online store. They are true partners in growth.", liveUrl: "https://example.com/apex-apparel" };
+    const sampleBlogData = { title: "The Future is Hybrid: Why Human Strategy is Irreplaceable", author: "Jane Doe", excerpt: "Many fear AI will replace marketers. We believe it will augment them. Discover why the combination of machine intelligence and human creativity is the true key to unlocking unprecedented growth.", content: "The narrative around AI in marketing is often one of replacement. But this view is fundamentally flawed. While AI models can analyze data and execute tasks at a scale and speed humans can only dream of, they lack genuine creativity, strategic intuition, and the ability to build human relationships. \n\nAt our core, we believe the future is not AI *or* human, but AI *and* human. Our process is built on this synergy. AI handles the 'what'—analyzing vast datasets to identify opportunities. The human strategist handles the 'why' and 'how'—interpreting that data, crafting a compelling brand story, and making the final strategic decisions. This hybrid model allows us to operate with the efficiency of a machine and the wisdom of a seasoned expert.", featuredImageUrl: "https://images.unsplash.com/photo-1507146153580-69a1fe6d8aa1?q=80&w=2070&auto=format&fit=crop" };
+    
+    const initialPortfolioFormState = { id: null, title: '', description: '', category: '', imageUrl: '', clientName: '', projectDate: '', services: '', challenge: '', solution: '', results: '', testimonial: '', liveUrl: '', isVisible: true, order: 0 };
+    const [portfolioForm, setPortfolioForm] = useState(initialPortfolioFormState);
+    
+    const [statsForm, setStatsForm] = useState(stats || { automationEfficiency: '', deliverySpeed: '', countriesReached: '', roiIncrease: '' });
+    useEffect(() => { setStatsForm(stats || { automationEfficiency: '', deliverySpeed: '', countriesReached: '', roiIncrease: '' }); }, [stats]);
+
+    const initialBlogFormState = { id: null, title: '', author: '', excerpt: '', content: '', featuredImageUrl: '', isVisible: true, order: 0 };
+    const [blogForm, setBlogForm] = useState(initialBlogFormState);
+
+    const handlePortfolioChange = (e) => setPortfolioForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const handleStatsChange = (e) => setStatsForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const handleBlogChange = (e) => setBlogForm(prev => ({...prev, [e.target.name]: e.target.value}));
+
+    const handlePortfolioSubmit = async (e) => {
+        e.preventDefault();
+        if (!portfolioForm.title || !portfolioForm.category) return alert('Title and Category are required.');
+        const servicesArray = portfolioForm.services.split(',').map(s => s.trim()).filter(Boolean);
+        const resultsArray = portfolioForm.results.split(',').map(r => {
+            const parts = r.split(':');
+            return { value: parts[0]?.trim() || '', label: parts[1]?.trim() || '' };
+        }).filter(r => r.value && r.label);
+        const dataToSave = { ...portfolioForm, services: servicesArray, results: resultsArray };
+        delete dataToSave.id;
+        try {
+            if (portfolioForm.id) await updateDoc(doc(db, 'portfolio', portfolioForm.id), dataToSave);
+            else await addDoc(collection(db, 'portfolio'), { ...dataToSave, order: portfolioItems.length });
+            setPortfolioForm(initialPortfolioFormState);
+        } catch (error) { console.error("Error saving portfolio:", error); alert('Failed to save portfolio.'); }
+    };
+    
+    const handleBlogSubmit = async (e) => {
+        e.preventDefault();
+        if (!blogForm.title || !blogForm.author) return alert('Title and Author are required.');
+        const dataToSave = { ...blogForm, publishedDate: new Date() };
+        delete dataToSave.id;
+        try {
+            if (blogForm.id) await updateDoc(doc(db, 'blog', blogForm.id), dataToSave);
+            else await addDoc(collection(db, 'blog'), { ...dataToSave, order: blogPosts.length });
+            setBlogForm(initialBlogFormState);
+        } catch (error) { console.error("Error saving blog post:", error); alert('Failed to save blog post.');}
+    };
+
+    const handleStatsSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            await setDoc(doc(db, 'stats', 'whyUsStats'), statsForm);
+            alert('Stats updated!');
+        } catch (error) { console.error("Error updating stats:", error); alert('Failed to update stats.'); }
+    };
+
+    const handleDelete = async (collectionName, id) => {
+        if (window.confirm('Are you sure you want to delete this item?')) {
+            try { await deleteDoc(doc(db, collectionName, id)); } 
+            catch (error) { console.error("Error deleting:", error); alert('Failed to delete.'); }
+        }
+    };
+
+    const handleEditClick = (item, type) => {
+        if (type === 'portfolio') {
+            const servicesString = Array.isArray(item.services) ? item.services.join(', ') : '';
+            const resultsString = Array.isArray(item.results) ? item.results.map(r => `${r.value}:${r.label}`).join(', ') : '';
+            setPortfolioForm({ ...item, services: servicesString, results: resultsString });
+        } else if (type === 'blog') {
+            setBlogForm(item);
+        }
+    };
+    
+    const loadSampleData = (type) => {
+        if (type === 'portfolio') {
+            setPortfolioForm({ ...initialPortfolioFormState, ...samplePortfolioData });
+        } else if (type === 'blog') {
+            setBlogForm({ ...initialBlogFormState, ...sampleBlogData });
+        }
+    };
+
+    const handleToggleVisibility = async (collectionName, item) => {
+        const docRef = doc(db, collectionName, item.id);
+        await updateDoc(docRef, { isVisible: !item.isVisible });
+    };
+
+    const handleMove = async (collectionName, items, setItems, index, direction) => {
+        if (direction === 'up' && index === 0) return;
+        if (direction === 'down' && index === items.length - 1) return;
+
+        const newItems = [...items];
+        const itemToMove = newItems[index];
+        const swapIndex = direction === 'up' ? index - 1 : index + 1;
+        const itemToSwap = newItems[swapIndex];
+        
+        newItems[index] = itemToSwap;
+        newItems[swapIndex] = itemToMove;
+        setItems(newItems);
+
+        const batch = writeBatch(db);
+        const item1Ref = doc(db, collectionName, itemToMove.id);
+        batch.update(item1Ref, { order: swapIndex });
+        const item2Ref = doc(db, collectionName, itemToSwap.id);
+        batch.update(item2Ref, { order: index });
+        
+        try {
+            await batch.commit();
+        } catch (error) {
+            console.error("Error reordering items:", error);
+            alert("Failed to reorder items. Please refresh.");
+            setItems(items);
+        }
+    };
+
+    const tabs = ['portfolio', 'blog', 'stats'];
+
+    return (
+        <div className="bg-gray-900 text-white min-h-screen p-4 sm:p-6 lg:px-8">
+            <div className="max-w-7xl mx-auto pt-20">
+                <h1 className="text-3xl font-bold mb-4">Admin Dashboard</h1>
+                <div className="border-b border-gray-700 mb-8">
+                    <nav className="-mb-px flex space-x-8">
+                        {tabs.map(tab => (
+                            <button key={tab} onClick={() => setActiveTab(tab)} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === tab ? 'border-purple-500 text-purple-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'}`}>
+                                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                            </button>
+                        ))}
+                    </nav>
+                </div>
+
+                {activeTab === 'portfolio' && (
+                    <div className="bg-gray-800 p-6 rounded-lg">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-semibold text-purple-400">{portfolioForm.id ? 'Edit Case Study' : 'Add New Case Study'}</h2>
+                            <button onClick={() => loadSampleData('portfolio')} className="bg-yellow-500 text-black px-3 py-1 rounded-md text-sm font-semibold">Load Sample Data</button>
+                        </div>
+                        <form onSubmit={handlePortfolioSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <input name="title" value={portfolioForm.title} onChange={handlePortfolioChange} placeholder="Project Title" className="w-full p-3 text-white bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 md:col-span-2"/>
+                            <input name="clientName" value={portfolioForm.clientName} onChange={handlePortfolioChange} placeholder="Client Name" className="w-full p-3 text-white bg-gray-700 rounded-md"/>
+                            <input name="projectDate" value={portfolioForm.projectDate} onChange={handlePortfolioChange} placeholder="Project Date (e.g., Q2 2025)" className="w-full p-3 text-white bg-gray-700 rounded-md"/>
+                            <input name="category" value={portfolioForm.category} onChange={handlePortfolioChange} placeholder="Category (e.g., Branding)" className="w-full p-3 text-white bg-gray-700 rounded-md"/>
+                            <input name="imageUrl" value={portfolioForm.imageUrl} onChange={handlePortfolioChange} placeholder="Image URL" className="w-full p-3 text-white bg-gray-700 rounded-md"/>
+                            <textarea name="description" value={portfolioForm.description} onChange={handlePortfolioChange} placeholder="Short Description for card" className="w-full p-3 text-white bg-gray-700 rounded-md md:col-span-2" rows="2"/>
+                            <textarea name="challenge" value={portfolioForm.challenge} onChange={handlePortfolioChange} placeholder="The Challenge" className="w-full p-3 text-white bg-gray-700 rounded-md md:col-span-2" rows="3"/>
+                            <textarea name="solution" value={portfolioForm.solution} onChange={handlePortfolioChange} placeholder="Our Solution" className="w-full p-3 text-white bg-gray-700 rounded-md md:col-span-2" rows="3"/>
+                            <input name="services" value={portfolioForm.services} onChange={handlePortfolioChange} placeholder="Services (comma-separated)" className="w-full p-3 text-white bg-gray-700 rounded-md"/>
+                            <input name="results" value={portfolioForm.results} onChange={handlePortfolioChange} placeholder="Results (e.g., +150%:Traffic, +30%:Conversion)" className="w-full p-3 text-white bg-gray-700 rounded-md"/>
+                            <textarea name="testimonial" value={portfolioForm.testimonial} onChange={handlePortfolioChange} placeholder="Client Testimonial" className="w-full p-3 text-white bg-gray-700 rounded-md md:col-span-2" rows="2"/>
+                            <input name="liveUrl" value={portfolioForm.liveUrl} onChange={handlePortfolioChange} placeholder="Live Project URL" className="w-full p-3 text-white bg-gray-700 rounded-md md:col-span-2"/>
+                            <div className="md:col-span-2 flex gap-4">
+                                <button type="submit" className="py-2 px-6 bg-purple-600 hover:bg-purple-700 rounded-md text-white font-medium">{portfolioForm.id ? 'Update Item' : 'Add Item'}</button>
+                                {portfolioForm.id && <button type="button" onClick={() => setPortfolioForm(initialPortfolioFormState)} className="py-2 px-6 bg-gray-600 hover:bg-gray-500 rounded-md text-white font-medium">Cancel Edit</button>}
+                            </div>
+                        </form>
+                        <div className="mt-12">
+                            <h3 className="text-xl font-semibold mb-4 text-purple-400">Current Portfolio Items</h3>
+                            <div className="space-y-4">
+                                {portfolioItems.map((item, index) => (
+                                    <div key={item.id} className="bg-gray-700 p-4 rounded-md flex items-center justify-between flex-wrap gap-4">
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex flex-col">
+                                                <button onClick={() => handleMove('portfolio', portfolioItems, setPortfolioItems, index, 'up')} disabled={index === 0} className="disabled:opacity-25 text-xs">▲</button>
+                                                <button onClick={() => handleMove('portfolio', portfolioItems, setPortfolioItems, index, 'down')} disabled={index === portfolioItems.length - 1} className="disabled:opacity-25 text-xs">▼</button>
+                                            </div>
+                                            <span className={`w-3 h-3 rounded-full ${item.isVisible ? 'bg-green-500' : 'bg-gray-500'}`}></span>
+                                            <p className="font-bold">{item.title}</p>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <ToggleSwitch isVisible={item.isVisible} onToggle={() => handleToggleVisibility('portfolio', item)} />
+                                            <button onClick={() => handleEditClick(item, 'portfolio')} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm">Edit</button>
+                                            <button onClick={() => handleDelete('portfolio', item.id)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm">Delete</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                {activeTab === 'blog' && (
+                    <div className="bg-gray-800 p-6 rounded-lg">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-semibold text-purple-400">{blogForm.id ? 'Edit Blog Post' : 'Add New Blog Post'}</h2>
+                             <button onClick={() => loadSampleData('blog')} className="bg-yellow-500 text-black px-3 py-1 rounded-md text-sm font-semibold">Load Sample Data</button>
+                        </div>
+                        <form onSubmit={handleBlogSubmit} className="space-y-4">
+                            <input name="title" value={blogForm.title} onChange={handleBlogChange} placeholder="Post Title" className="w-full p-3 text-white bg-gray-700 rounded-md"/>
+                            <input name="author" value={blogForm.author} onChange={handleBlogChange} placeholder="Author Name" className="w-full p-3 text-white bg-gray-700 rounded-md"/>
+                            <input name="featuredImageUrl" value={blogForm.featuredImageUrl} onChange={handleBlogChange} placeholder="Featured Image URL" className="w-full p-3 text-white bg-gray-700 rounded-md"/>
+                            <textarea name="excerpt" value={blogForm.excerpt} onChange={handleBlogChange} placeholder="Excerpt for card view" className="w-full p-3 text-white bg-gray-700 rounded-md" rows="3"/>
+                            <textarea name="content" value={blogForm.content} onChange={handleBlogChange} placeholder="Full post content (Markdown supported)" className="w-full p-3 text-white bg-gray-700 rounded-md" rows="10"/>
+                            <div className="flex gap-4">
+                                <button type="submit" className="py-2 px-6 bg-purple-600 hover:bg-purple-700 rounded-md text-white font-medium">{blogForm.id ? 'Update Post' : 'Create Post'}</button>
+                                {blogForm.id && <button type="button" onClick={() => setBlogForm(initialBlogFormState)} className="py-2 px-6 bg-gray-600 hover:bg-gray-500 rounded-md text-white font-medium">Cancel Edit</button>}
+                            </div>
+                        </form>
+                        <div className="mt-12">
+                            <h3 className="text-xl font-semibold mb-4 text-purple-400">Current Blog Posts</h3>
+                            <div className="space-y-4">
+                                {blogPosts.map((post, index) => (
+                                    <div key={post.id} className="bg-gray-700 p-4 rounded-md flex items-center justify-between flex-wrap gap-4">
+                                       <div className="flex items-center gap-4">
+                                            <div className="flex flex-col">
+                                                <button onClick={() => handleMove('blog', blogPosts, setBlogPosts, index, 'up')} disabled={index === 0} className="disabled:opacity-25 text-xs">▲</button>
+                                                <button onClick={() => handleMove('blog', blogPosts, setBlogPosts, index, 'down')} disabled={index === blogPosts.length - 1} className="disabled:opacity-25 text-xs">▼</button>
+                                            </div>
+                                            <span className={`w-3 h-3 rounded-full ${post.isVisible ? 'bg-green-500' : 'bg-gray-500'}`}></span>
+                                            <p className="font-bold">{post.title}</p>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <ToggleSwitch isVisible={post.isVisible} onToggle={() => handleToggleVisibility('blog', post)} />
+                                            <button onClick={() => handleEditClick(post, 'blog')} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm">Edit</button>
+                                            <button onClick={() => handleDelete('blog', post.id)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm">Delete</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'stats' && (
+                     <div className="bg-gray-800 p-6 rounded-lg">
+                        <h2 className="text-2xl font-semibold mb-4 text-purple-400">Manage "Why Us" Stats</h2>
+                        <form onSubmit={handleStatsSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {Object.keys(statsForm).map(key => (
+                                <div key={key}>
+                                    <label className="text-sm font-bold text-gray-300 block mb-2 capitalize">{key.replace(/([A-Z])/g, ' $1')}</label>
+                                    <input name={key} value={statsForm[key]} onChange={handleStatsChange} className="w-full p-3 text-white bg-gray-700 rounded-md"/>
+                                </div>
+                            ))}
+                            <div className="md:col-span-2">
+                               <button type="submit" className="w-full md:w-auto py-2 px-6 bg-green-600 hover:bg-green-700 rounded-md text-white font-medium">Save Stats</button>
+                            </div>
+                        </form>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const Footer = ({ setPage }) => (
+    <footer className="bg-gray-800 border-t border-gray-700 text-gray-400">
+        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                <div>
+                    <h3 className="text-sm font-semibold text-gray-200 tracking-wider uppercase">Solutions</h3>
+                    <ul className="mt-4 space-y-4">
+                        <li><button onClick={() => setPage('services')} className="text-base text-gray-400 hover:text-white">Our Services</button></li>
+                        <li><button onClick={() => setPage('portfolio')} className="text-base text-gray-400 hover:text-white">Case Studies</button></li>
+                        <li><button onClick={() => setPage('roi-calculator')} className="text-base text-gray-400 hover:text-white">ROI Calculator</button></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 className="text-sm font-semibold text-gray-200 tracking-wider uppercase">Company</h3>
+                    <ul className="mt-4 space-y-4">
+                         <li><button onClick={() => setPage('about')} className="text-base text-gray-400 hover:text-white">About Us</button></li>
+                         <li><button onClick={() => setPage('blog')} className="text-base text-gray-400 hover:text-white">Insights</button></li>
+                         <li><button onClick={() => setPage('contact')} className="text-base text-gray-400 hover:text-white">Contact Us</button></li>
+                    </ul>
+                </div>
+                <div className="col-span-2 md:col-span-2">
+                     <h3 className="text-sm font-semibold text-gray-200 tracking-wider uppercase">Subscribe to our newsletter</h3>
+                     <p className="mt-4 text-base text-gray-400">The latest news, articles, and resources, sent to your inbox weekly.</p>
+                     <form className="mt-4 sm:flex sm:max-w-md">
+                         <label htmlFor="email-address" className="sr-only">Email address</label>
+                         <input type="email" name="email-address" id="email-address" autoComplete="email" required className="appearance-none min-w-0 w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-4 text-base text-white placeholder-gray-400 focus:outline-none focus:ring-purple-500 focus:border-purple-500" placeholder="Enter your email" />
+                         <div className="mt-3 rounded-md sm:mt-0 sm:ml-3 sm:flex-shrink-0">
+                             <button type="submit" className="w-full bg-purple-600 flex items-center justify-center border border-transparent rounded-md py-2 px-4 text-base font-medium text-white hover:bg-purple-700">Subscribe</button>
+                         </div>
+                     </form>
+                </div>
+            </div>
+            <div className="mt-8 border-t border-gray-700 pt-8 md:flex md:items-center md:justify-between">
+                <p className="text-base text-gray-400">&copy; 2025 AI.gency. All rights reserved.</p>
+                <div className="flex justify-center space-x-6 md:order-2">
+                    <button onClick={() => setPage('login')} className="text-gray-400 hover:text-gray-300">
+                        Admin Login
+                    </button>
+                </div>
+            </div>
+        </div>
+    </footer>
+);
+
+const Chatbot = ({ setPage }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [isPopped, setIsPopped] = useState(false);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (!isOpen) {
+                setIsPopped(true);
+            }
+        }, 3000); // Popup after 3 seconds
+        return () => clearTimeout(timer);
+    }, [isOpen]);
+
+    const toggleOpen = () => {
+        setIsOpen(!isOpen);
+        if(!isOpen) setIsPopped(false);
+    }
+
+    return (
+        <div className="fixed bottom-5 right-5 z-50">
+            {isOpen && (
+                <div className="bg-gray-800 w-80 h-96 rounded-lg shadow-2xl flex flex-col transition-all duration-300 animate-fade-in-up">
+                    <div className="bg-gray-700 p-4 rounded-t-lg flex justify-between items-center">
+                        <h3 className="text-white font-bold">AI Assistant</h3>
+                        <button onClick={toggleOpen} className="text-gray-400 hover:text-white">
+                            <CloseIcon className="w-6 h-6" />
+                        </button>
+                    </div>
+                    <div className="p-4 flex-grow text-sm space-y-4">
+                        <div className="bg-purple-600 text-white p-3 rounded-lg self-start max-w-xs">
+                            Welcome to AI.gency! How can I help you grow your business today?
+                        </div>
+                         <div className="flex flex-col space-y-2">
+                            <button onClick={() => {setPage('services'); setIsOpen(false);}} className="bg-gray-700 text-left p-2 rounded-lg hover:bg-gray-600">Explore our services</button>
+                            <button onClick={() => {setPage('pricing'); setIsOpen(false);}} className="bg-gray-700 text-left p-2 rounded-lg hover:bg-gray-600">View pricing plans</button>
+                            <button onClick={() => {setPage('book-a-slot'); setIsOpen(false);}} className="bg-gray-700 text-left p-2 rounded-lg hover:bg-gray-600">Book a free consultation</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            <button onClick={toggleOpen} className={`transition-all duration-300 ${isOpen ? 'opacity-0 scale-0' : 'opacity-100 scale-100'}`}>
+                <div className="bg-purple-600 p-4 rounded-full shadow-lg hover:bg-purple-700 transform hover:scale-110 transition-transform">
+                    <ChatIcon className="w-8 h-8 text-white"/>
+                </div>
+                {isPopped && (
+                    <div className="absolute bottom-full right-0 mb-2 w-48 bg-white text-gray-800 text-sm p-3 rounded-lg shadow-lg animate-fade-in">
+                        <p>Have a question? Chat with our AI assistant!</p>
+                        <div className="absolute right-4 -bottom-2 w-4 h-4 bg-white transform rotate-45"></div>
+                    </div>
+                )}
+            </button>
+        </div>
+    );
+};
+
+
+// --- Main App Component ---
+export default function App() {
+  const [page, setPage] = useState('home');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [portfolioItems, setPortfolioItems] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [blogPosts, setBlogPosts] = useState([]);
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [pageContext, setPageContext] = useState(null);
+
+  useEffect(() => {
+    const collectionsToFetch = [
+        { name: 'portfolio', setter: setPortfolioItems, options: [orderBy('order', 'asc')] },
+        { name: 'blog', setter: setBlogPosts, options: [orderBy('order', 'asc')] },
+    ];
+
+    const unsubscribers = collectionsToFetch.map(c => {
+        const q = query(collection(db, c.name), ...c.options);
+        return onSnapshot(q, (snapshot) => {
+            c.setter(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        }, (error) => console.error(`Error fetching ${c.name}:`, error));
+    });
+    
+    const unsubscribeStats = onSnapshot(doc(db, "stats", "whyUsStats"), (doc) => {
+        if (doc.exists()) setStats(doc.data());
+        else console.log("No stats document found!");
+    }, (error) => console.error("Error fetching stats:", error));
+
+    setLoading(false);
+
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+      unsubscribeStats();
+    };
+  }, []); 
+
+  const handleLogout = () => {
+    setIsAdmin(false);
+    setPage('home');
+  };
+  
+  const handleSetPage = (newPage, context = null) => {
+      setPage(newPage);
+      setPageContext(context);
+  }
+
+  const renderPage = () => {
+    if (loading) {
+        return <div className="bg-gray-900 min-h-screen flex items-center justify-center text-white text-xl">Loading...</div>;
+    }
+    
+    if (page === 'blog' && selectedPost) {
+        return <BlogPostPage post={selectedPost} setSelectedPost={setSelectedPost} />;
+    }
+
+    const visiblePortfolioItems = portfolioItems.filter(p => p.isVisible);
+    const visibleBlogPosts = blogPosts.filter(p => p.isVisible);
+
+    switch (page) {
+      case 'home':
+        return <HomePage setPage={handleSetPage} portfolioItems={visiblePortfolioItems} blogPosts={visibleBlogPosts} />;
+      case 'about':
+        return <AboutUsPage setPage={handleSetPage} />;
+      case 'services':
+        return <ServicesPage setPage={handleSetPage} />;
+      case 'pricing':
+        return <PricingPage handleSetPage={handleSetPage} />;
+      case 'ai-consultancy':
+        return <AIConsultancyPage setPage={handleSetPage} />;
+      case 'why-us':
+        return <WhyUsPage stats={stats} setPage={handleSetPage} />;
+      case 'portfolio':
+        return <PortfolioPage portfolioItems={visiblePortfolioItems} />;
+      case 'blog':
+        return <BlogPage posts={visibleBlogPosts} setSelectedPost={setSelectedPost} />;
+      case 'roi-calculator':
+        return <RoiCalculatorPage />;
+      case 'contact':
+        return <ContactPage setPage={handleSetPage} />;
+      case 'book-a-slot':
+        return <BookSlotPage selectedPackage={pageContext} />;
+      case 'login':
+        return <AdminLoginPage setPage={handleSetPage} setIsAdmin={setIsAdmin} />;
+      case 'admin':
+        return isAdmin ? <AdminDashboard portfolioItems={portfolioItems} setPortfolioItems={setPortfolioItems} stats={stats} blogPosts={blogPosts} setBlogPosts={setBlogPosts} /> : <AdminLoginPage setPage={handleSetPage} setIsAdmin={setIsAdmin} />;
+      default:
+        return <HomePage setPage={handleSetPage} portfolioItems={visiblePortfolioItems} blogPosts={visibleBlogPosts} />;
+    }
+  };
+
+  return (
+    <div className="bg-gray-900">
+      <Navbar setPage={handleSetPage} isAdmin={isAdmin} handleLogout={handleLogout} />
+      <main>
+        {renderPage()}
+      </main>
+      <Footer setPage={handleSetPage} />
+      {page === 'home' && <Chatbot setPage={handleSetPage} />}
+    </div>
+  );
+}
